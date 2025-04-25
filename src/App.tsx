@@ -10,6 +10,9 @@ import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import VerifyCode from "./pages/VerifyCode";
 import NotFound from "./pages/NotFound";
+import Features from "./pages/Features";
+import Pricing from "./pages/Pricing";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -21,14 +24,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/features" element={<Index />} />
-          <Route path="/pricing" element={<Index />} />
-          <Route path="/contact" element={<Index />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/verify-code" element={<VerifyCode />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
