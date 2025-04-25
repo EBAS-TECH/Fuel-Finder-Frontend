@@ -33,9 +33,9 @@ const Login = () => {
       description: "Welcome to Fuel Finder.",
     });
     
-    // Redirect to home page
+    // Redirect to dashboard instead of home
     setTimeout(() => {
-      window.location.href = '/';
+      window.location.href = '/dashboard';
     }, 1500);
   };
 
