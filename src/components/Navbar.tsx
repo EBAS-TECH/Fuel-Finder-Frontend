@@ -2,18 +2,33 @@
 import { Link } from "react-router-dom";
 import Logo from "./Logo";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 20;
+      setScrolled(isScrolled);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
   return (
-    <header className="bg-white shadow-sm py-4 px-4 md:px-8">
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-4 md:px-8 ${
+        scrolled ? "bg-white/95 backdrop-blur-sm shadow-md" : "bg-white"
+      }`}
+    >
       <div className="container mx-auto">
         <div className="flex items-center justify-between">
           <Logo />
@@ -36,13 +51,28 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors">
+            <Link 
+              to="/" 
+              className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
+            >
               Home
             </Link>
-            <Link to="/features" className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors">
+            <Link 
+              to="/features" 
+              className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
+            >
               Features
             </Link>
-            <Link to="/contact" className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors">
+            <Link 
+              to="/pricing" 
+              className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
+            >
+              Pricing
+            </Link>
+            <Link 
+              to="/contact" 
+              className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
+            >
               Contact us
             </Link>
           </nav>
@@ -52,13 +82,13 @@ const Navbar = () => {
             <Button 
               asChild 
               variant="outline" 
-              className="text-fuelGreen-500 border-fuelGreen-500 hover:bg-fuelGreen-50"
+              className="text-fuelGreen-500 border-fuelGreen-500 hover:bg-fuelGreen-50 font-medium"
             >
               <Link to="/login">Login</Link>
             </Button>
             <Button 
               asChild 
-              className="bg-fuelGreen-500 hover:bg-fuelGreen-600"
+              className="bg-fuelGreen-500 hover:bg-fuelGreen-600 font-medium"
             >
               <Link to="/register">Register</Link>
             </Button>
@@ -67,25 +97,32 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden mt-4 py-4 border-t">
+          <div className="md:hidden mt-4 py-4 border-t animate-fade-in">
             <nav className="flex flex-col gap-4">
               <Link 
                 to="/" 
-                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2"
+                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Home
               </Link>
               <Link 
                 to="/features" 
-                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2"
+                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Features
               </Link>
               <Link 
+                to="/pricing" 
+                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link 
                 to="/contact" 
-                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2"
+                className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact us
@@ -94,13 +131,13 @@ const Navbar = () => {
                 <Button 
                   asChild 
                   variant="outline" 
-                  className="text-fuelGreen-500 border-fuelGreen-500 hover:bg-fuelGreen-50 w-full"
+                  className="text-fuelGreen-500 border-fuelGreen-500 hover:bg-fuelGreen-50 w-full font-medium"
                 >
                   <Link to="/login" onClick={() => setIsMenuOpen(false)}>Login</Link>
                 </Button>
                 <Button 
                   asChild 
-                  className="bg-fuelGreen-500 hover:bg-fuelGreen-600 w-full"
+                  className="bg-fuelGreen-500 hover:bg-fuelGreen-600 w-full font-medium"
                 >
                   <Link to="/register" onClick={() => setIsMenuOpen(false)}>Register</Link>
                 </Button>
