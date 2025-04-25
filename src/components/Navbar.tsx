@@ -19,8 +19,16 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const offsetTop = element.offsetTop - 80; // Adjust for navbar height
+      window.scrollTo({
+        top: offsetTop,
+        behavior: 'smooth'
+      });
+      setIsMenuOpen(false);
+    }
   };
 
   return (
@@ -38,7 +46,7 @@ const Navbar = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={toggleMenu}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             >
               {isMenuOpen ? (
@@ -51,30 +59,30 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link 
-              to="/" 
+            <button 
+              onClick={() => scrollToSection('home')}
               className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
             >
               Home
-            </Link>
-            <Link 
-              to="/features" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('features')}
               className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
             >
               Features
-            </Link>
-            <Link 
-              to="/pricing" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('pricing')}
               className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
             >
               Pricing
-            </Link>
-            <Link 
-              to="/contact" 
+            </button>
+            <button 
+              onClick={() => scrollToSection('contact')}
               className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors font-medium"
             >
               Contact us
-            </Link>
+            </button>
           </nav>
 
           {/* Desktop Auth Buttons */}
@@ -99,47 +107,43 @@ const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4 py-4 border-t animate-fade-in">
             <nav className="flex flex-col gap-4">
-              <Link 
-                to="/" 
+              <button 
+                onClick={() => scrollToSection('home')}
                 className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
-                onClick={() => setIsMenuOpen(false)}
               >
                 Home
-              </Link>
-              <Link 
-                to="/features" 
+              </button>
+              <button 
+                onClick={() => scrollToSection('features')}
                 className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
-                onClick={() => setIsMenuOpen(false)}
               >
                 Features
-              </Link>
-              <Link 
-                to="/pricing" 
+              </button>
+              <button 
+                onClick={() => scrollToSection('pricing')}
                 className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
-                onClick={() => setIsMenuOpen(false)}
               >
                 Pricing
-              </Link>
-              <Link 
-                to="/contact" 
+              </button>
+              <button 
+                onClick={() => scrollToSection('contact')}
                 className="text-fuelBlue-500 hover:text-fuelGreen-500 transition-colors px-2 py-2 font-medium"
-                onClick={() => setIsMenuOpen(false)}
               >
                 Contact us
-              </Link>
+              </button>
               <div className="flex flex-col gap-2 pt-4">
                 <Button 
                   asChild 
                   variant="outline" 
                   className="text-fuelGreen-500 border-fuelGreen-500 hover:bg-fuelGreen-50 w-full font-medium"
                 >
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>Login</Link>
+                  <Link to="/login">Login</Link>
                 </Button>
                 <Button 
                   asChild 
                   className="bg-fuelGreen-500 hover:bg-fuelGreen-600 w-full font-medium"
                 >
-                  <Link to="/register" onClick={() => setIsMenuOpen(false)}>Register</Link>
+                  <Link to="/register">Register</Link>
                 </Button>
               </div>
             </nav>
