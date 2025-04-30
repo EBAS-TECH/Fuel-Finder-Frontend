@@ -3,7 +3,7 @@ import { Button, ButtonProps } from "@/components/ui/button";
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-interface PrimaryButtonProps extends ButtonProps {}
+type PrimaryButtonProps = ButtonProps
 
 const PrimaryButton = forwardRef<HTMLButtonElement, PrimaryButtonProps>(
   ({ className, children, ...props }, ref) => {
