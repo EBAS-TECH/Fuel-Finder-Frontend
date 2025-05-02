@@ -11,11 +11,11 @@ import NotFound from "./pages/NotFound";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
 import Contact from "./pages/Contact";
-import DashboardLayout from "./pages/dashboard/DashboardLayout";
-import DashboardHome from "./pages/dashboard/DashboardHome";
-import MapView from "./pages/dashboard/MapView";
-import History from "./pages/dashboard/History";
-import Settings from "./pages/dashboard/Settings";
+import GasStationDashboardLayout from "./pages/gasstation/GasStationDashboardLayout";
+import GasStationHome from "./pages/gasstation/GasStationHome";
+import Profile from "./pages/gasstation/Profile";
+import FuelAvailability from "./pages/gasstation/FuelAvailability";
+import Feedbacks from "./pages/gasstation/Feedbacks";
 
 const queryClient = new QueryClient();
 
@@ -33,13 +33,13 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-code" element={<VerifyCode />} />
-
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardHome />} />
-            <Route path="map" element={<MapView />} />
-            <Route path="history" element={<History />} />
-            <Route path="settings" element={<Settings />} />
+          
+          {/* Gas Station Routes */}
+          <Route path="/gasstation" element={<GasStationDashboardLayout />}>
+            <Route index element={<GasStationHome />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="fuel-availability" element={<FuelAvailability />} />
+            <Route path="feedbacks" element={<Feedbacks />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

@@ -59,7 +59,7 @@ const Login = () => {
 
       // Redirect to dashboard
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/gasstation");
       }, 1500);
     } catch (error: any) {
       toast({
