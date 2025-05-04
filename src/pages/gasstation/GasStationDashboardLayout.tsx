@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import Logo from "@/components/Logo";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import logoImage from '@/assets/logo.png'; // Added this import
 
 const GasStationDashboardLayout = () => {
   const location = useLocation();
@@ -23,7 +23,14 @@ const GasStationDashboardLayout = () => {
         {/* Header */}
         <header className="border-b p-4 flex items-center justify-between bg-white">
           <div className="flex items-center gap-4">
-            <Logo className="w-28" />
+            {/* Replaced Logo component with img tag */}
+            <Link to="/">
+              <img 
+                src={logoImage} 
+                alt="Fuel Finder Logo"
+                className="w-28 h-auto" // Maintained same size as original
+              />
+            </Link>
             <div className="relative w-64 hidden md:block">
               <Input
                 type="text"

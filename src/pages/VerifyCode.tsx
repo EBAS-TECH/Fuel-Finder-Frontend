@@ -1,22 +1,19 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import Logo from "@/components/Logo";
+import { Link, useSearchParams } from "react-router-dom";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useToast } from "@/components/ui/use-toast";
 import VerificationInput from "@/components/auth/VerificationInput";
+import logoImage from '@/assets/logo.png';
 
 const VerifyCode = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
 
-  // Get user ID from URL params or localStorage
-  const userId =
-    searchParams.get("userId") || localStorage.getItem("tempUserId");
+  const userId = searchParams.get("userId") || localStorage.getItem("tempUserId");
   const email = localStorage.getItem("tempUserEmail");
 
-  const handleVerify = async (code: string) => {
+  const handleVerify = async (code) => {
     if (!code || code.length !== 6) {
       toast({
         title: "Invalid Code",
@@ -30,12 +27,10 @@ const VerifyCode = () => {
 
     try {
       if (!userId || !email) {
-        throw new Error(
-          "Your verification session has expired. Please register again."
-        );
+        throw new Error("Your verification session has expired. Please register again.");
       }
 
-      const verifyResponse = await fetch(
+      const response = await fetch(
         `http://localhost:5001/api/auth/verify/${userId}`,
         {
           method: "PUT",
@@ -46,30 +41,20 @@ const VerifyCode = () => {
         }
       );
 
-      const verifyData = await verifyResponse.json();
+      const data = await response.json();
 
-      if (!verifyResponse.ok || !verifyData.verified) {
-        throw new Error(
-          verifyData.message || "Verification failed. Please try again."
-        );
+      if (!response.ok) {
+        throw new Error(data.message || "Verification failed. Please try again.");
       }
 
-      // Show success toast first
-      toast({
-        title: "Verified Successfully!",
-        description: "Your account has been verified. Redirecting to login...",
-      });
-
-      // Clear storage
+      // Clear storage immediately
       localStorage.removeItem("tempUserId");
       localStorage.removeItem("tempUserEmail");
 
-      // Then navigate after a short delay to ensure toast is visible
-      setTimeout(() => {
-        console.log("Navigating to login page...");
-        navigate("/login", { replace: true });
-      }, 1500);
-    } catch (error: any) {
+      // Immediately navigate to login without showing toast
+      window.location.href = "/login";
+
+    } catch (error) {
       toast({
         title: "Verification Failed",
         description: error.message,
@@ -83,39 +68,48 @@ const VerifyCode = () => {
   const handleResendCode = async () => {
     try {
       if (!userId) {
-        throw new Error(
-          "We couldn't identify your account. Please try registering again."
-        );
+        throw new Error("We couldn't identify your account. Please try registering again.");
       }
 
       setIsSubmitting(true);
+      
       const response = await fetch(
-        "http://localhost:5001/api/auth/resend-verification",
+        `http://localhost:5001/api/auth/resend/${userId}`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
+            "Accept": "application/json"
           },
-          body: JSON.stringify({ userId }),
         }
       );
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        throw new Error(text || "Server returned an unexpected response");
+      }
+
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to send a new verification code."
-        );
+        throw new Error(result.message || "Failed to send a new verification code.");
       }
 
       toast({
         title: "New Code Sent!",
-        description: "Please check your email for the verification code.",
+        description: result.message || "A new verification code has been sent to your email.",
       });
-    } catch (error: any) {
+
+    } catch (error) {
+      let errorMessage = error.message;
+      if (errorMessage.startsWith("<") || errorMessage.startsWith("{")) {
+        errorMessage = "Failed to resend verification code. Please try again.";
+      }
+
       toast({
         title: "Failed to Resend",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -128,7 +122,13 @@ const VerifyCode = () => {
       {/* Left side - Logo area */}
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center">
         <div className="flex flex-col items-center max-w-md">
-          <Logo className="mb-12 scale-150" />
+          <div className="mb-12 scale-150">
+            <img 
+              src={logoImage} 
+              alt="Fuel Finder Logo"
+              className="h-[52px] w-auto"
+            />
+          </div>
           <h1 className="text-4xl font-bold text-center text-fuelGreen-500 mb-6">
             Fuel Finder App
           </h1>
@@ -208,7 +208,7 @@ const VerifyCode = () => {
                 className="text-fuelGreen-500 hover:underline"
                 disabled={isSubmitting}
               >
-                Resend Verification Code
+                {isSubmitting ? "Sending..." : "Resend Verification Code"}
               </button>
             </div>
           </div>

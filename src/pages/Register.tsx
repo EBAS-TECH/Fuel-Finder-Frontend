@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Logo from "@/components/Logo";
 import PrimaryButton from "@/components/PrimaryButton";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import logoImage from '@/assets/newlog.png';
 
 type UserType = "drivers" | "stations";
 
@@ -28,7 +28,6 @@ const Register = () => {
     password: "",
     email: "",
     confirmPassword: "",
-    
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,10 +158,17 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-fuelGreen-50 flex">
-      {/* Left side - Logo area */}
-      <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center">
+      {/* Left side - Fixed Logo area */}
+      <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center sticky top-0 h-screen">
         <div className="flex flex-col items-center max-w-md">
-          <Logo className="mb-12 scale-150" />
+          {/* Fixed Logo */}
+          <div className="mb-12 scale-150">
+            <img 
+              src={logoImage} 
+              alt="Fuel Finder Logo"
+              className="h-[160px] w-auto"
+            />
+          </div>
           <h1 className="text-4xl font-bold text-center text-fuelGreen-500 mb-6">
             Fuel Finder App
           </h1>
@@ -188,8 +194,8 @@ const Register = () => {
         </Link>
       </div>
 
-      {/* Right side - Form */}
-      <div className="w-full md:w-1/2 bg-white p-8 flex items-center justify-center">
+      {/* Right side - Scrollable Form */}
+      <div className="w-full md:w-1/2 bg-white p-8 flex items-center justify-center overflow-y-auto">
         <div className="w-full max-w-md">
           {/* Mobile back button */}
           <div className="md:hidden mb-8">
@@ -587,4 +593,5 @@ const Register = () => {
     </div>
   );
 };
+
 export default Register;
