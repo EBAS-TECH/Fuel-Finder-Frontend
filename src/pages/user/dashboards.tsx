@@ -50,7 +50,7 @@ const ratingDistribution = [
   { stars: 1, users: 200 },
 ];
 
-const Feedbacks = () => {
+const dashboards = () => {
   const [page, setPage] = useState(1);
 
   // Calculate average rating
@@ -229,4 +229,4 @@ const Feedbacks = () => {
   );
 };
 
-export default Feedbacks;
+export default dashboards;

@@ -13,6 +13,7 @@ import Pricing from "./pages/Pricing";
 import Contact from "./pages/Contact";
 import GasStationDashboardLayout from "./pages/gasstation/GasStationDashboardLayout";
 import GasStationHome from "./pages/gasstation/GasStationHome";
+import GasStationWaiting from "./pages/gasstation/GasStationWaiting"; // Add this import
 import Profile from "./pages/gasstation/Profile";
 import FuelAvailability from "./pages/gasstation/FuelAvailability";
 import Feedbacks from "./pages/gasstation/Feedbacks";
@@ -33,7 +34,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-code" element={<VerifyCode />} />
-          
+
           {/* Gas Station Routes */}
           <Route path="/gasstation" element={<GasStationDashboardLayout />}>
             <Route index element={<GasStationHome />} />
@@ -41,7 +42,11 @@ const App = () => (
             <Route path="fuel-availability" element={<FuelAvailability />} />
             <Route path="feedbacks" element={<Feedbacks />} />
           </Route>
+          
+          {/* Add the waiting page route */}
+          <Route path="/gas-station/waiting" element={<GasStationWaiting />} />
 
+                    
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

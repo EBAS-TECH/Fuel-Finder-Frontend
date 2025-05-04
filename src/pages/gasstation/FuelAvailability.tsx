@@ -11,6 +11,14 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon, ChevronDown } from "lucide-react";
 
 // Mock data
 const initialFuels = [
@@ -18,7 +26,7 @@ const initialFuels = [
     id: 1,
     name: "Diesel",
     startDate: "22 Jan 2024",
-    endDate: "28 Jan 2024",
+    endDate: "29 Jan 2024",
     availableHrs: 11,
     available: true,
   },
@@ -26,17 +34,17 @@ const initialFuels = [
     id: 2,
     name: "Gasoline",
     startDate: "22 Jan 2024",
-    endDate: "28 Jan 2024",
+    endDate: "29 Jan 2024",
     availableHrs: 6.5,
     available: false,
   },
   {
     id: 3,
-    name: "Fuel Type 3",
+    name: "Premium",
     startDate: "22 Jan 2024",
-    endDate: "28 Jan 2024",
+    endDate: "29 Jan 2024",
     availableHrs: 8,
-    available: false,
+    available: true,
   },
 ];
 
@@ -46,8 +54,11 @@ const FuelAvailability = () => {
   const [fuelAvailability, setFuelAvailability] = useState({
     diesel: true,
     gasoline: false,
-    fuelType3: false,
+    premium: true,
   });
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [selectedFuel, setSelectedFuel] = useState("");
 
   const toggleFuel = (key: string) => {
     setFuelAvailability((prev) => ({
@@ -57,7 +68,7 @@ const FuelAvailability = () => {
   };
 
   return (
-    <div>
+    <div className="p-6">
       <div className="flex items-center mb-6">
         <div className="flex-1">
           <svg
@@ -101,44 +112,69 @@ const FuelAvailability = () => {
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <Card className="p-0 overflow-hidden">
-            <div className="p-4 flex items-center justify-between flex-wrap gap-3">
-              <h2 className="font-medium">Fuel Availability</h2>
+            <div className="p-4 flex items-center justify-between flex-wrap gap-3 bg-fuelGreen-50">
+              <h2 className="font-medium text-fuelGreen-700">Fuel Availability</h2>
               <div className="flex flex-wrap gap-2">
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[130px] bg-white">
-                    <SelectValue placeholder="Fuel Type" />
+                {/* Fuel Type Dropdown */}
+                <Select value={selectedFuel} onValueChange={setSelectedFuel}>
+                  <SelectTrigger className="w-[150px] bg-white">
+                    <SelectValue placeholder="Fuel Type">
+                      {selectedFuel ? selectedFuel : "Fuel Type"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="all">All Fuel Types</SelectItem>
                     <SelectItem value="diesel">Diesel</SelectItem>
                     <SelectItem value="gasoline">Gasoline</SelectItem>
-                    <SelectItem value="type3">Fuel Type 3</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
                   </SelectContent>
                 </Select>
 
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[130px] bg-white">
-                    <SelectValue placeholder="Start Date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Dates</SelectItem>
-                    <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="yesterday">Yesterday</SelectItem>
-                    <SelectItem value="last7">Last 7 Days</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Start Date Picker */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-[150px] justify-between text-left font-normal"
+                    >
+                      <span className="text-muted-foreground">
+                        {startDate ? format(startDate, "dd MMM yyyy") : "Start Date"}
+                      </span>
+                      <CalendarIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
 
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-[130px] bg-white">
-                    <SelectValue placeholder="End Date" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Dates</SelectItem>
-                    <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="tomorrow">Tomorrow</SelectItem>
-                    <SelectItem value="next7">Next 7 Days</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* End Date Picker */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-[150px] justify-between text-left font-normal"
+                    >
+                      <span className="text-muted-foreground">
+                        {endDate ? format(endDate, "dd MMM yyyy") : "End Date"}
+                      </span>
+                      <CalendarIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
 
                 <Button className="bg-fuelGreen-500 hover:bg-fuelGreen-600">
                   Filter
@@ -159,12 +195,18 @@ const FuelAvailability = () => {
                 </thead>
                 <tbody>
                   {fuels.map((fuel) => (
-                    <tr key={fuel.id} className="border-b border-gray-100">
+                    <tr key={fuel.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">{fuel.id}</td>
-                      <td className="py-3 px-4">{fuel.name}</td>
+                      <td className="py-3 px-4 font-medium">{fuel.name}</td>
                       <td className="py-3 px-4">{fuel.startDate}</td>
                       <td className="py-3 px-4">{fuel.endDate}</td>
-                      <td className="py-3 px-4">{fuel.availableHrs}</td>
+                      <td className="py-3 px-4">
+                        {fuel.availableHrs === 11 ? (
+                          <span className="text-fuelGreen-600 font-medium">11</span>
+                        ) : (
+                          fuel.availableHrs
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -172,13 +214,16 @@ const FuelAvailability = () => {
             </div>
 
             <div className="p-4 flex items-center justify-between border-t">
-              <div className="text-sm text-gray-500">Showing 1 - 5 of 2</div>
+              <div className="text-sm text-gray-500">
+                Showing {fuels.length} fuel types
+              </div>
               <div className="flex gap-1">
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-full"
                   disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
                 >
                   <svg
                     className="w-4 h-4"
@@ -212,6 +257,7 @@ const FuelAvailability = () => {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8 rounded-full"
+                  onClick={() => setPage(page + 1)}
                 >
                   <svg
                     className="w-4 h-4"
@@ -233,32 +279,44 @@ const FuelAvailability = () => {
 
         <div>
           <Card className="p-4">
-            <h2 className="text-lg font-medium mb-4">Fuel Status</h2>
+            <h2 className="text-lg font-medium mb-4 text-fuelGreen-700">Fuel Status</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="diesel">Diesel</Label>
+                <div>
+                  <Label htmlFor="diesel" className="font-medium">Diesel</Label>
+                  <p className="text-xs text-gray-500 mt-1">Regular diesel fuel</p>
+                </div>
                 <Switch
                   id="diesel"
                   checked={fuelAvailability.diesel}
                   onCheckedChange={() => toggleFuel("diesel")}
+                  className="data-[state=checked]:bg-fuelGreen-500"
                 />
               </div>
 
               <div className="flex items-center justify-between">
-                <Label htmlFor="gasoline">Gasoline</Label>
+                <div>
+                  <Label htmlFor="gasoline" className="font-medium">Gasoline</Label>
+                  <p className="text-xs text-gray-500 mt-1">Regular unleaded</p>
+                </div>
                 <Switch
                   id="gasoline"
                   checked={fuelAvailability.gasoline}
                   onCheckedChange={() => toggleFuel("gasoline")}
+                  className="data-[state=checked]:bg-fuelGreen-500"
                 />
               </div>
 
               <div className="flex items-center justify-between">
-                <Label htmlFor="fuelType3">Fuel Type 3</Label>
+                <div>
+                  <Label htmlFor="premium" className="font-medium">Premium</Label>
+                  <p className="text-xs text-gray-500 mt-1">High octane fuel</p>
+                </div>
                 <Switch
-                  id="fuelType3"
-                  checked={fuelAvailability.fuelType3}
-                  onCheckedChange={() => toggleFuel("fuelType3")}
+                  id="premium"
+                  checked={fuelAvailability.premium}
+                  onCheckedChange={() => toggleFuel("premium")}
+                  className="data-[state=checked]:bg-fuelGreen-500"
                 />
               </div>
 
@@ -274,9 +332,12 @@ const FuelAvailability = () => {
                     <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <p className="text-sm text-amber-800">
-                  Remember to keep your fuel status updated for customers.
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-amber-800">Important Notice</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Remember to keep your fuel status updated for customers.
+                  </p>
+                </div>
               </div>
             </div>
           </Card>

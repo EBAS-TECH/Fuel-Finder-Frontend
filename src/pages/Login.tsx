@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Logo from "@/components/Logo";
 import PrimaryButton from "@/components/PrimaryButton";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import logoImage from '@/assets/newlog.png';
 
 const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    username: "", // Changed from usernameEmail to username
+    username: "",
     password: "",
     keepLoggedIn: false,
   });
@@ -26,6 +27,7 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
       const response = await fetch("http://localhost:5001/api/auth/login", {
@@ -45,28 +47,54 @@ const Login = () => {
         throw new Error(data.message || "Login failed");
       }
 
-      toast({
-        title: "Login successful!",
-        description: "Welcome to Fuel Finder.",
-      });
-
-      // Store token if keepLoggedIn is true
+      // Store token based on preference
       if (formData.keepLoggedIn && data.token) {
         localStorage.setItem("authToken", data.token);
+        localStorage.setItem("userRole", data.user?.role);
       } else if (data.token) {
         sessionStorage.setItem("authToken", data.token);
+        sessionStorage.setItem("userRole", data.user?.role);
       }
 
-      // Redirect to dashboard
+      toast({
+        title: "Login successful!",
+        description: `Welcome to Fuel Finder, ${data.user?.role || 'user'}`,
+      });
+
+      // Redirect based on user role
       setTimeout(() => {
-        navigate("/gasstation");
+        const role = data.user?.role?.toLowerCase();
+        switch(role) {
+          case 'admin':
+            navigate("/admin/dashboard");
+            break;
+          case 'gas_station':
+            // Check if gas station is approved
+            if (data.user?.isApproved) {
+              navigate("/gas-station/dashboard");
+            } else {
+              navigate("/gas-station/waiting");
+            }
+            break;
+          case 'driver':
+            navigate("/driver/dashboard");
+            break;
+          case 'ministry_delegate':
+            navigate("/ministry/dashboard");
+            break;
+          default:
+            navigate("/");
+        }
       }, 1500);
+
     } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -79,7 +107,13 @@ const Login = () => {
       {/* Left side - Logo area */}
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center">
         <div className="flex flex-col items-center max-w-md">
-          <Logo className="mb-12 scale-150" />
+          <div className="mb-12 scale-150">
+            <img 
+              src={logoImage} 
+              alt="Fuel Finder Logo"
+              className="h-[160px] w-auto"
+            />
+          </div>
           <h1 className="text-4xl font-bold text-center text-fuelGreen-500 mb-6">
             Fuel Finder App
           </h1>
@@ -137,10 +171,10 @@ const Login = () => {
             Enter your username and password to login
           </p>
 
-          {/* Google Sign In Button */}
           <Button
             variant="outline"
             className="w-full mb-6 flex items-center justify-center gap-2 py-6 bg-fuelGreen-50 hover:bg-fuelGreen-100"
+            disabled={isLoading}
           >
             <svg
               width="20"
@@ -192,6 +226,7 @@ const Login = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                 placeholder="Enter your username"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -213,11 +248,13 @@ const Login = () => {
                   placeholder="Enter your password"
                   minLength={8}
                   required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2"
                   onClick={togglePasswordVisibility}
+                  disabled={isLoading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400" />
@@ -237,6 +274,7 @@ const Login = () => {
                   checked={formData.keepLoggedIn}
                   onChange={handleChange}
                   className="h-4 w-4 text-fuelGreen-500 focus:ring-fuelGreen-500 border-gray-300 rounded"
+                  disabled={isLoading}
                 />
                 <label
                   htmlFor="keepLoggedIn"
@@ -254,8 +292,12 @@ const Login = () => {
               </Link>
             </div>
 
-            <PrimaryButton type="submit" className="w-full py-6 font-medium">
-              Login
+            <PrimaryButton 
+              type="submit" 
+              className="w-full py-6 font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? "Logging in..." : "Login"}
             </PrimaryButton>
 
             <p className="text-center mt-6 text-gray-600">
