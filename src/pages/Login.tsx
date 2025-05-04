@@ -4,7 +4,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import logoImage from '@/assets/newlog.png';
+import logoImage from "@/assets/newlog.png";
 
 const Login = () => {
   const { toast } = useToast();
@@ -51,42 +51,45 @@ const Login = () => {
       if (formData.keepLoggedIn && data.token) {
         localStorage.setItem("authToken", data.token);
         localStorage.setItem("userRole", data.user?.role);
+        localStorage.setItem("userData", JSON.stringify(data.user));
       } else if (data.token) {
         sessionStorage.setItem("authToken", data.token);
         sessionStorage.setItem("userRole", data.user?.role);
+        sessionStorage.setItem("userData", JSON.stringify(data.user));
       }
 
       toast({
         title: "Login successful!",
-        description: `Welcome to Fuel Finder, ${data.user?.role || 'user'}`,
+        description: `Welcome to Fuel Finder, ${
+          data.user?.first_name || "user"
+        }`,
       });
 
-      // Redirect based on user role
+      // Redirect based on user role with a short delay
       setTimeout(() => {
-        const role = data.user?.role?.toLowerCase();
-        switch(role) {
-          case 'admin':
+        const role = data.user?.role?.toUpperCase();
+        switch (role) {
+          case "ADMIN":
             navigate("/admin/dashboard");
             break;
-          case 'gas_station':
+          case "GAS_STATION":
             // Check if gas station is approved
-            if (data.user?.isApproved) {
+            if (data.user?.station_approved) {
               navigate("/gas-station/dashboard");
             } else {
               navigate("/gas-station/waiting");
             }
             break;
-          case 'driver':
+          case "DRIVER":
             navigate("/driver/dashboard");
             break;
-          case 'ministry_delegate':
+          case "MINISTRY_DELEGATE":
             navigate("/ministry/dashboard");
             break;
           default:
             navigate("/");
         }
       }, 1500);
-
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -108,8 +111,8 @@ const Login = () => {
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center">
         <div className="flex flex-col items-center max-w-md">
           <div className="mb-12 scale-150">
-            <img 
-              src={logoImage} 
+            <img
+              src={logoImage}
               alt="Fuel Finder Logo"
               className="h-[160px] w-auto"
             />
@@ -292,8 +295,8 @@ const Login = () => {
               </Link>
             </div>
 
-            <PrimaryButton 
-              type="submit" 
+            <PrimaryButton
+              type="submit"
               className="w-full py-6 font-medium"
               disabled={isLoading}
             >

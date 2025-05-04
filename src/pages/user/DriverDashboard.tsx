@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logoImage from '@/assets/logo.png'; // Added this import
 
-const GasStationDashboardLayout = () => {
+const DriverDashboardLayout = () => {
   const location = useLocation();
   const [user] = useState({
     name: "Bereket Nigussie",
@@ -149,4 +149,4 @@ const GasStationDashboardLayout = () => {
   );
 };
 
-export default GasStationDashboardLayout;
+export default DriverDashboardLayout;
