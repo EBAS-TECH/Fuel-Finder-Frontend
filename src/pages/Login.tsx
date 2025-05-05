@@ -47,44 +47,37 @@ const Login = () => {
         throw new Error(data.message || "Login failed");
       }
 
-      // Store token based on preference
-      if (formData.keepLoggedIn && data.token) {
+      // Store user data
+      if (formData.keepLoggedIn) {
         localStorage.setItem("authToken", data.token);
-        localStorage.setItem("userRole", data.user?.role);
+        localStorage.setItem("userId", data.user.id);
+        localStorage.setItem("userRole", data.user.role);
         localStorage.setItem("userData", JSON.stringify(data.user));
-      } else if (data.token) {
+      } else {
         sessionStorage.setItem("authToken", data.token);
-        sessionStorage.setItem("userRole", data.user?.role);
+        sessionStorage.setItem("userId", data.user.id);
+        sessionStorage.setItem("userRole", data.user.role);
         sessionStorage.setItem("userData", JSON.stringify(data.user));
       }
 
       toast({
         title: "Login successful!",
-        description: `Welcome to Fuel Finder, ${
-          data.user?.first_name || "user"
-        }`,
+        description: `Welcome back, ${data.user.first_name || "user"}!`,
       });
 
-      // Redirect based on user role with a short delay
+      // Redirect based on role
       setTimeout(() => {
-        const role = data.user?.role?.toUpperCase();
-        switch (role) {
+        switch (data.user.role.toUpperCase()) {
           case "ADMIN":
             navigate("/admin/dashboard");
             break;
           case "GAS_STATION":
-            // Check if gas station is approved
-            if (data.user?.station_approved) {
-              navigate("/gas-station/dashboard");
-            } else {
-              navigate("/gas-station/waiting");
-            }
+            navigate(data.user.station_approved 
+              ? "/gas-station/dashboard" 
+              : "/gas-station/waiting");
             break;
           case "DRIVER":
             navigate("/driver/dashboard");
-            break;
-          case "MINISTRY_DELEGATE":
-            navigate("/ministry/dashboard");
             break;
           default:
             navigate("/");
@@ -111,32 +104,15 @@ const Login = () => {
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center">
         <div className="flex flex-col items-center max-w-md">
           <div className="mb-12 scale-150">
-            <img
-              src={logoImage}
-              alt="Fuel Finder Logo"
-              className="h-[160px] w-auto"
-            />
+            <img src={logoImage} alt="Fuel Finder Logo" className="h-[160px] w-auto" />
           </div>
           <h1 className="text-4xl font-bold text-center text-fuelGreen-500 mb-6">
             Fuel Finder App
           </h1>
         </div>
-
-        <Link
-          to="/"
-          className="mt-12 text-fuelGreen-500 flex items-center hover:text-fuelGreen-600 transition-colors"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 mr-2"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-              clipRule="evenodd"
-            />
+        <Link to="/" className="mt-12 text-fuelGreen-500 flex items-center hover:text-fuelGreen-600 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
           </svg>
           Back to Landing Page
         </Link>
@@ -147,77 +123,20 @@ const Login = () => {
         <div className="w-full max-w-md">
           {/* Mobile back button */}
           <div className="md:hidden mb-8">
-            <Link
-              to="/"
-              className="text-fuelGreen-500 flex items-center text-sm hover:text-fuelGreen-600 transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-1"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-                  clipRule="evenodd"
-                />
+            <Link to="/" className="text-fuelGreen-500 flex items-center text-sm hover:text-fuelGreen-600 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
               </svg>
               Back to Landing Page
             </Link>
           </div>
 
-          <h2 className="text-3xl font-bold mb-1 text-center text-fuelBlue-500">
-            Login
-          </h2>
-          <p className="text-gray-500 mb-6 text-center">
-            Enter your username and password to login
-          </p>
-
-          <Button
-            variant="outline"
-            className="w-full mb-6 flex items-center justify-center gap-2 py-6 bg-fuelGreen-50 hover:bg-fuelGreen-100"
-            disabled={isLoading}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M19.6 10.2273C19.6 9.51823 19.5364 8.84549 19.4182 8.18185H10V12.0546H15.3818C15.15 13.3 14.4455 14.3591 13.3864 15.0682V17.5773H16.6182C18.5091 15.8364 19.6 13.2728 19.6 10.2273Z"
-                fill="#4285F4"
-              />
-              <path
-                d="M10 20.0001C12.7 20.0001 14.9636 19.1046 16.6182 17.5773L13.3864 15.0682C12.4909 15.6682 11.3455 16.0228 10 16.0228C7.39545 16.0228 5.19091 14.2637 4.40455 11.9001H1.06364V14.4909C2.70909 17.7591 6.09091 20.0001 10 20.0001Z"
-                fill="#34A853"
-              />
-              <path
-                d="M4.40455 11.8999C4.20455 11.2999 4.09091 10.6636 4.09091 9.99994C4.09091 9.33631 4.20455 8.69994 4.40455 8.09994V5.50903H1.06364C0.386364 6.85903 0 8.38631 0 9.99994C0 11.6136 0.386364 13.1409 1.06364 14.4909L4.40455 11.8999Z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M10 3.97727C11.4682 3.97727 12.7864 4.48182 13.8227 5.47273L16.6909 2.60455C14.9591 0.990909 12.7 0 10 0C6.09091 0 2.70909 2.24091 1.06364 5.50909L4.40455 8.1C5.19091 5.73636 7.39545 3.97727 10 3.97727Z"
-                fill="#EA4335"
-              />
-            </svg>
-            Sign in with Google
-          </Button>
-
-          <div className="flex items-center my-4">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="mx-4 text-gray-500 text-sm">or</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-          </div>
+          <h2 className="text-3xl font-bold mb-1 text-center text-fuelBlue-500">Login</h2>
+          <p className="text-gray-500 mb-6 text-center">Enter your username and password to login</p>
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                 Username *
               </label>
               <input
@@ -234,10 +153,7 @@ const Login = () => {
             </div>
 
             <div className="mb-4">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password*
               </label>
               <div className="relative">
@@ -279,18 +195,12 @@ const Login = () => {
                   className="h-4 w-4 text-fuelGreen-500 focus:ring-fuelGreen-500 border-gray-300 rounded"
                   disabled={isLoading}
                 />
-                <label
-                  htmlFor="keepLoggedIn"
-                  className="ml-2 block text-sm text-gray-700"
-                >
+                <label htmlFor="keepLoggedIn" className="ml-2 block text-sm text-gray-700">
                   Keep me logged in
                 </label>
               </div>
 
-              <Link
-                to="/forgot-password"
-                className="text-sm text-fuelGreen-500 hover:underline"
-              >
+              <Link to="/forgot-password" className="text-sm text-fuelGreen-500 hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -305,10 +215,7 @@ const Login = () => {
 
             <p className="text-center mt-6 text-gray-600">
               Not registered yet?{" "}
-              <Link
-                to="/register"
-                className="text-fuelGreen-500 hover:underline font-medium"
-              >
+              <Link to="/register" className="text-fuelGreen-500 hover:underline font-medium">
                 Register
               </Link>
             </p>
