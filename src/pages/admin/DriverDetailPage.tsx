@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ChevronLeft, Star, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, User } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -8,60 +8,184 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 
-// Sample data for driver details
-const driverData = {
-  id: 1,
-  firstName: "Solomon",
-  lastName: "Bekele",
-  username: "solbek123",
-  email: "email123@gmail.com",
-  avatar: "/lovable-uploads/33aaae15-01dd-4225-9aea-5e05b6b69803.png"
-};
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  email: string;
+  profile_pic: string;
+  role: string;
+}
 
-// Sample feedback data
-const feedbackData = [
-  {
-    id: 1,
-    reviewer: "Samuel Terefe",
-    date: "22 Jan 2025",
-    rating: 5,
-    comment: "I was running on empty during a fuel shortage — this app helped me find a nearby station in minutes. Total lifesaver!",
-    stationName: "Total Energies Near abc St.",
-    stationLogo: "/lovable-uploads/3b24a52c-5dee-4810-98d3-f9832a4c6d5e.png",
-    stationRating: 4.4
-  },
-  {
-    id: 2,
-    reviewer: "Samuel Terefe",
-    date: "22 Jan 2025",
-    rating: 4,
-    comment: "I was running on empty during a fuel shortage — this app helped me find a nearby station in minutes. Total lifesaver!",
-    stationName: "Yetebaberut around abc St.",
-    stationLogo: "/lovable-uploads/3b24a52c-5dee-4810-98d3-f9832a4c6d5e.png",
-    stationRating: 4
-  },
-  {
-    id: 3,
-    reviewer: "Samuel Terefe",
-    date: "22 Jan 2025",
-    rating: 2,
-    comment: "I was running on empty during a fuel shortage — this app helped me find a nearby station in minutes. Total lifesaver!",
-    stationName: "OLA Fuel Station around abc St.",
-    stationLogo: "/lovable-uploads/3b24a52c-5dee-4810-98d3-f9832a4c6d5e.png",
-    stationRating: 4.4
-  }
-];
+interface Feedback {
+  id: string;
+  user_id: string;
+  station_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+interface Station {
+  id: string;
+  name: string;
+  logo: string;
+  address: string;
+  city: string;
+  average_rating: number;
+  created_at: string;
+  updated_at: string | null;
+}
 
 export default function DriverDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const [driver, setDriver] = useState<User | null>(null);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [stations, setStations] = useState<Record<string, Station>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState("stars");
-  
-  // Pagination handler
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("newest");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [starFilter, setStarFilter] = useState<number | null>(null);
+  const itemsPerPage = 4;
+
+  // Get auth token from storage
+  const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch driver details
+        const driverResponse = await fetch(`http://localhost:5001/api/user/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        if (!driverResponse.ok) {
+          throw new Error("Failed to fetch driver details");
+        }
+        const driverData = await driverResponse.json();
+        setDriver(driverData.data);
+        
+        // Fetch feedbacks for this user
+        const feedbackResponse = await fetch(`http://localhost:5001/api/feedback/user/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        if (!feedbackResponse.ok) {
+          throw new Error("Failed to fetch feedbacks");
+        }
+        const feedbackData = await feedbackResponse.json();
+        setFeedbacks(feedbackData.data);
+        
+        // Fetch station details for each feedback
+        const stationsData: Record<string, Station> = {};
+        
+        await Promise.all(feedbackData.data.map(async (feedback: Feedback) => {
+          try {
+            const stationResponse = await fetch(`http://localhost:5001/api/station/${feedback.station_id}`, {
+              headers: {
+                'Authorization': `Bearer ${authToken}`
+              }
+            });
+            
+            if (stationResponse.ok) {
+              const stationData = await stationResponse.json();
+              stationsData[feedback.station_id] = {
+                id: feedback.station_id,
+                name: stationData.data.name,
+                logo: stationData.data.logo,
+                address: stationData.data.address,
+                city: stationData.data.city,
+                average_rating: stationData.data.average_rating || 0,
+                created_at: stationData.data.created_at,
+                updated_at: stationData.data.updated_at
+              };
+            }
+          } catch (err) {
+            console.error(`Failed to fetch station ${feedback.station_id}:`, err);
+          }
+        }));
+        
+        setStations(stationsData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        toast({
+          title: "Error",
+          description: err instanceof Error ? err.message : "Failed to load data",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id, authToken, toast]);
+
+  // Update star filter when filter changes
+  useEffect(() => {
+    if (filter.includes("star")) {
+      setStarFilter(parseInt(filter.split("-")[0]));
+    } else {
+      setStarFilter(null);
+    }
+  }, [filter]);
+
+  // Filter and sort feedbacks
+  const filteredFeedbacks = feedbacks.filter(feedback => {
+    // Filter by star rating if selected
+    if (starFilter !== null && feedback.rating !== starFilter) {
+      return false;
+    }
+    
+    // Filter by date range if selected
+    if (dateRange?.from || dateRange?.to) {
+      const feedbackDate = new Date(feedback.created_at);
+      if (dateRange.from && feedbackDate < dateRange.from) {
+        return false;
+      }
+      if (dateRange.to && feedbackDate > dateRange.to) {
+        return false;
+      }
+    }
+    
+    return true;
+  }).sort((a, b) => {
+    // Sort by criteria
+    if (sort === "newest") {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    } else if (sort === "oldest") {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    } else if (sort === "highest") {
+      return b.rating - a.rating;
+    } else if (sort === "lowest") {
+      return a.rating - b.rating;
+    }
+    return 0;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredFeedbacks.length / itemsPerPage);
+  const paginatedFeedbacks = filteredFeedbacks.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Render star ratings
   const renderStars = (rating: number) => {
@@ -72,6 +196,18 @@ export default function DriverDetailPage() {
       />
     ));
   };
+
+  if (loading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-500">Error: {error}</div>;
+  }
+
+  if (!driver) {
+    return <div className="p-6">Driver not found</div>;
+  }
 
   return (
     <div>
@@ -94,124 +230,253 @@ export default function DriverDetailPage() {
           <div className="col-span-12 md:col-span-4 bg-white p-6 rounded-lg flex flex-col items-center">
             <div className="w-32 h-32 rounded-full border-4 border-emerald-100 mb-5 overflow-hidden">
               <img 
-                src={driverData.avatar} 
-                alt={`${driverData.firstName} ${driverData.lastName}`}
+                src={driver.profile_pic} 
+                alt={`${driver.first_name} ${driver.last_name}`}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://via.placeholder.com/150";
+                }}
               />
             </div>
-            <h3 className="text-xl font-medium mb-1">{`${driverData.firstName} ${driverData.lastName}`}</h3>
-            <p className="text-gray-500 mb-1">{driverData.username}</p>
-            <p className="text-gray-500">{driverData.email}</p>
+            <h3 className="text-xl font-medium mb-1">{`${driver.first_name} ${driver.last_name}`}</h3>
+            <p className="text-gray-500 mb-1">@{driver.username}</p>
+            <p className="text-gray-500">{driver.email}</p>
+            <p className="text-gray-500 mt-2 capitalize">{driver.role.toLowerCase().replace('_', ' ')}</p>
           </div>
           
           {/* Feedback Section */}
           <div className="col-span-12 md:col-span-8">
             <div className="bg-white rounded-lg p-6">
               <div className="flex justify-between items-center mb-5">
-                <h3 className="text-lg font-medium">Feedbacks</h3>
+                <h3 className="text-lg font-medium">Feedbacks ({filteredFeedbacks.length})</h3>
                 <div className="flex gap-2">
                   <Select value={filter} onValueChange={setFilter}>
                     <SelectTrigger className="w-32 border-none bg-gray-100">
                       <SelectValue placeholder="Filter by" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="stars">Stars</SelectItem>
-                      <SelectItem value="newest">Newest</SelectItem>
-                      <SelectItem value="oldest">Oldest</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="1-star">1 Star</SelectItem>
+                      <SelectItem value="2-star">2 Stars</SelectItem>
+                      <SelectItem value="3-star">3 Stars</SelectItem>
+                      <SelectItem value="4-star">4 Stars</SelectItem>
+                      <SelectItem value="5-star">5 Stars</SelectItem>
                     </SelectContent>
                   </Select>
                   
-                  <Select defaultValue="date">
+                  <Select value={sort} onValueChange={setSort}>
                     <SelectTrigger className="w-32 border-none bg-gray-100">
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="date">Date</SelectItem>
-                      <SelectItem value="rating">Rating</SelectItem>
+                      <SelectItem value="newest">Newest</SelectItem>
+                      <SelectItem value="oldest">Oldest</SelectItem>
+                      <SelectItem value="highest">Highest Rating</SelectItem>
+                      <SelectItem value="lowest">Lowest Rating</SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className="w-32 border-none bg-gray-100 justify-start text-left font-normal"
+                      >
+                        {dateRange?.from ? (
+                          dateRange.to ? (
+                            <>
+                              {format(dateRange.from, "MMM dd")} -{" "}
+                              {format(dateRange.to, "MMM dd")}
+                            </>
+                          ) : (
+                            format(dateRange.from, "MMM dd")
+                          )
+                        ) : (
+                          <span>Date range</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
               
               <div className="space-y-4">
-                {feedbackData.map((feedback) => (
-                  <div key={feedback.id} className="border-l-4 border-emerald-500 pl-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full overflow-hidden">
-                          <img 
-                            src={driverData.avatar} 
-                            alt={feedback.reviewer}
-                            className="w-full h-full object-cover"
-                          />
+                {paginatedFeedbacks.length > 0 ? (
+                  paginatedFeedbacks.map((feedback) => {
+                    const station = stations[feedback.station_id];
+                    return (
+                      <div key={feedback.id} className="border-l-4 border-emerald-500 pl-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full overflow-hidden">
+                              <img 
+                                src={driver.profile_pic} 
+                                alt={`${driver.first_name} ${driver.last_name}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-emerald-700">{`${driver.first_name} ${driver.last_name}`}</h4>
+                              <p className="text-xs text-gray-400">
+                                {format(new Date(feedback.created_at), "dd MMM yyyy")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            {renderStars(feedback.rating)}
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-medium text-emerald-700">{feedback.reviewer}</h4>
-                          <p className="text-xs text-gray-400">{feedback.date}</p>
-                        </div>
+                        <p className="text-sm text-gray-500 mb-2">{feedback.comment}</p>
+                        
+                        {station && (
+                          <div className="flex justify-end items-center gap-3 bg-gray-50 p-2 rounded-lg">
+                            <div className="w-10 h-10 rounded-full overflow-hidden">
+                              <img 
+                                src={station.logo}
+                                alt={station.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
+                                }}
+                              />
+                            </div>
+                            <div className="text-right">
+                              <h5 className="text-sm font-medium">{station.name}</h5>
+                              <p className="text-xs text-gray-500">{station.address}, {station.city}</p>
+                              <div className="flex items-center gap-1 justify-end mt-1">
+                                <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md flex items-center">
+                                  <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-0.5" />
+                                  {station.average_rating.toFixed(1)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center">
-                        {renderStars(feedback.rating)}
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-500 mb-2">{feedback.comment}</p>
-                    
-                    <div className="flex justify-end items-center gap-3 bg-gray-50 p-2 rounded-lg">
-                      <div className="w-10 h-10 rounded-full overflow-hidden">
-                        <img 
-                          src={feedback.stationLogo}
-                          alt={feedback.stationName}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <h5 className="text-sm font-medium">{feedback.stationName}</h5>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md flex items-center">
-                            <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-0.5" />
-                            {feedback.stationRating}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    No feedbacks found matching your criteria
                   </div>
-                ))}
+                )}
               </div>
               
-              {/* Pagination */}
-              <div className="flex justify-end mt-4">
-                <div className="flex items-center gap-1">
-                  <button 
-                    className="p-1.5 rounded-full bg-gray-200 text-gray-600" 
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
+              {/* Enhanced Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6">
+                  <div className="text-sm text-gray-500">
+                    Showing {(currentPage - 1) * itemsPerPage + 1}-
+                    {Math.min(currentPage * itemsPerPage, filteredFeedbacks.length)} of {filteredFeedbacks.length} feedbacks
+                  </div>
                   
-                  {[1, 2].map((page) => (
+                  <div className="flex items-center gap-2">
                     <button 
-                      key={page}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        currentPage === page 
-                          ? "bg-emerald-500 text-white" 
-                          : "bg-gray-200 text-gray-600"
-                      }`}
-                      onClick={() => handlePageChange(page)}
+                      className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
                     >
-                      {page}
+                      First
                     </button>
-                  ))}
-                  
-                  <button 
-                    className="p-1.5 rounded-full bg-gray-200 text-gray-600" 
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === 2}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                    
+                    <button 
+                      className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" 
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    
+                    {/* Show limited page numbers with ellipsis */}
+                    {totalPages <= 5 ? (
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button 
+                          key={page}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            currentPage === page 
+                              ? "bg-emerald-500 text-white" 
+                              : "bg-gray-200 text-gray-600"
+                          }`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      ))
+                    ) : (
+                      <>
+                        {currentPage > 2 && (
+                          <button 
+                            className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 text-gray-600"
+                            onClick={() => setCurrentPage(1)}
+                          >
+                            1
+                          </button>
+                        )}
+                        
+                        {currentPage > 3 && <span className="mx-1">...</span>}
+                        
+                        {[
+                          currentPage - 1,
+                          currentPage,
+                          currentPage + 1
+                        ].filter(page => page > 0 && page <= totalPages).map((page) => (
+                          <button 
+                            key={page}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                              currentPage === page 
+                                ? "bg-emerald-500 text-white" 
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        
+                        {currentPage < totalPages - 2 && <span className="mx-1">...</span>}
+                        
+                        {currentPage < totalPages - 1 && (
+                          <button 
+                            className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 text-gray-600"
+                            onClick={() => setCurrentPage(totalPages)}
+                          >
+                            {totalPages}
+                          </button>
+                        )}
+                      </>
+                    )}
+                    
+                    <button 
+                      className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" 
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                    
+                    <button 
+                      className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Last
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -219,6 +484,3 @@ export default function DriverDetailPage() {
     </div>
   );
 }
-
-// Import the ChevronRight icon
-import { ChevronRight } from "lucide-react";
