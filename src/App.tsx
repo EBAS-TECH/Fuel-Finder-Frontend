@@ -17,6 +17,14 @@ import GasStationWaiting from "./pages/gasstation/GasStationWaiting";
 import Profile from "./pages/gasstation/Profile";
 import FuelAvailability from "./pages/gasstation/FuelAvailability";
 import Feedbacks from "./pages/gasstation/Feedbacks";
+import DeligatesPage from "./pages/admin/DeligatesPage";
+import DriverDetailPage from "./pages/admin/DriverDetailPage";
+import DashboardPage from "./pages/admin/DashboardPage";
+import AdminLayout from "./pages/admin/Layout";
+import DriversPage from "./pages/admin/DriversPage";
+import StationsPage from "./pages/admin/StationsPage";
+import StationDetailPage from "./pages/admin/StationDetailPage";
+import ProfilePage from "./pages/admin/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +56,16 @@ const App = () => (
               <Route path="fuel-availability" element={<FuelAvailability />} />
               <Route path="feedbacks" element={<Feedbacks />} />
             </Route>
+          </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="delegates" element={<DeligatesPage />} />
+            <Route path="drivers" element={<DriversPage />} />
+            <Route path="drivers/:id" element={<DriverDetailPage />} />
+            <Route path="stations" element={<StationsPage />} />
+            <Route path="stations/:id" element={<StationDetailPage />} />
+            <Route path="profile" element={<ProfilePage />} />
           </Route>
 
           {/* Catch-all route */}
