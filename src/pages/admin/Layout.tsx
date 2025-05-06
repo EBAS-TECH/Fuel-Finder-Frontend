@@ -37,12 +37,25 @@ const SidebarItem = ({ icon, label, to, active }: SidebarItemProps) => {
   );
 };
 
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  email: string;
+  role: string;
+  profile_pic: string;
+  verified: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const pathName = location.pathname;
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,13 +75,13 @@ export default function AdminLayout() {
             const response = await axios.get(
               `http://localhost:5001/api/user/${parsedUser.id}`
             );
-            setUser(response.data);
+            setUser(response.data.data);
 
             // Update the stored user data with fresh data
             if (localStorage.getItem("userData")) {
-              localStorage.setItem("userData", JSON.stringify(response.data));
+              localStorage.setItem("userData", JSON.stringify(response.data.data));
             } else {
-              sessionStorage.setItem("userData", JSON.stringify(response.data));
+              sessionStorage.setItem("userData", JSON.stringify(response.data.data));
             }
           } catch (apiError) {
             console.error("Failed to fetch updated user data:", apiError);
@@ -139,14 +152,13 @@ export default function AdminLayout() {
           {/* Sidebar */}
           <div className="w-[220px] border-r min-h-screen p-4">
             <div className="flex justify-center mb-2 mt-1">
-            <Link to="/admin/dashboard">
-              <img
-                src={logoImage}
-                alt="Fuel Finder Logo"
-                className="w-20 h-auto"
-              />
-            </Link>
-              
+              <Link to="/admin/dashboard">
+                <img
+                  src={logoImage}
+                  alt="Fuel Finder Logo"
+                  className="w-20 h-auto"
+                />
+              </Link>
             </div>
 
             <div className="space-y-1 mt-6">
@@ -209,7 +221,7 @@ export default function AdminLayout() {
                       className="h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <img
-                        src={user.avatar || user.profile_picture}
+                        src={user.profile_pic}
                         alt="User Avatar"
                         className="h-10 w-10 rounded-full"
                       />

@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface User {
-  id: number; // Sequential display ID
-  originalId: number; // Actual user ID from API
+  id: number; // Sequential display ID (per page)
+  originalId: string; // Actual user ID from API
   firstName: string;
   lastName: string;
   username: string;
@@ -26,7 +26,7 @@ interface User {
   role: string;
 }
 
-const DriversPage = () => {
+const DriversPage: React.FC = () => {
   const [drivers, setDrivers] = useState<User[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,14 +34,14 @@ const DriversPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [driverToDelete, setDriverToDelete] = useState<number | null>(null); // Stores sequential ID
+  const [driverToDelete, setDriverToDelete] = useState<string | null>(null); // Stores original ID
   const { toast } = useToast();
   const itemsPerPage = 4;
 
   const fetchDrivers = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       if (!token) {
@@ -62,9 +62,9 @@ const DriversPage = () => {
       }
 
       const responseData = await response.json();
-      const data = Array.isArray(responseData) 
-        ? responseData 
-        : responseData.data || responseData.users || [];
+      const data = Array.isArray(responseData.data)
+        ? responseData.data
+        : [];
 
       if (!Array.isArray(data)) {
         throw new Error("Invalid data format received from server");
@@ -72,37 +72,32 @@ const DriversPage = () => {
 
       // Sort by first name, then last name
       const sortedData = [...data].sort((a, b) => {
-        const aFirstName = (a.firstName || a.first_name || '').toLowerCase();
-        const bFirstName = (b.firstName || b.first_name || '').toLowerCase();
-        const aLastName = (a.lastName || a.last_name || '').toLowerCase();
-        const bLastName = (b.lastName || b.last_name || '').toLowerCase();
-        
+        const aFirstName = (a.first_name || '').toLowerCase();
+        const bFirstName = (b.first_name || '').toLowerCase();
+        const aLastName = (a.last_name || '').toLowerCase();
+        const bLastName = (b.last_name || '').toLowerCase();
+
         if (aFirstName < bFirstName) return -1;
         if (aFirstName > bFirstName) return 1;
         return aLastName.localeCompare(bLastName);
       });
 
-      // Map with both sequential and original IDs
+      // Map with original IDs (sequential IDs will be assigned per page)
       const driversData = sortedData
-        .map((user: any, index: number) => ({
-          id: index + 1, // Sequential display ID
-          originalId: user.id, // Actual user ID from API
-          firstName: user.firstName || user.first_name || 'Unknown',
-          lastName: user.lastName || user.last_name || 'User',
+        .map((user: any) => ({
+          originalId: user.id,
+          firstName: user.first_name || 'Unknown',
+          lastName: user.last_name || 'User',
           username: user.username || 'N/A',
           email: user.email || 'No email',
-          avatar: user.avatar 
-            ? user.avatar.startsWith('http') 
-              ? user.avatar 
-              : `http://localhost:5001${user.avatar}`
-            : '/default-avatar.png',
+          avatar: user.profile_pic || '/default-avatar.png', // Use profile_pic from response
           role: user.role || ''
         }))
         .filter((user) => user.role.toUpperCase() === "DRIVER");
 
       setDrivers(driversData);
       setTotalPages(Math.max(1, Math.ceil(driversData.length / itemsPerPage)));
-      
+
       if (driversData.length === 0) {
         setError("No drivers found in the system.");
       }
@@ -128,14 +123,7 @@ const DriversPage = () => {
         throw new Error("Authentication required");
       }
 
-      // Find driver by sequential ID to get the originalId
-      const driver = drivers.find(d => d.id === driverToDelete);
-      if (!driver) {
-        throw new Error("Driver not found");
-      }
-
-      // Use originalId for the API call
-      const response = await fetch(`http://localhost:5001/api/user/${driver.originalId}`, {
+      const response = await fetch(`http://localhost:5001/api/user/${driverToDelete}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -148,9 +136,8 @@ const DriversPage = () => {
         throw new Error(errorData.message || "Failed to delete driver");
       }
 
-      // Refresh the list after successful deletion
       await fetchDrivers();
-      
+
       toast({
         title: "Success",
         description: "Driver deleted successfully",
@@ -178,11 +165,16 @@ const DriversPage = () => {
   // Calculate total pages based on filtered results
   const calculatedTotalPages = Math.max(1, Math.ceil(filteredDrivers.length / itemsPerPage));
 
-  // Get current drivers for pagination
-  const currentDrivers = filteredDrivers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Get current drivers for pagination with sequential IDs per page
+  const currentDrivers = filteredDrivers
+    .slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    )
+    .map((driver, index) => ({
+      ...driver,
+      id: (currentPage - 1) * itemsPerPage + index + 1 // Sequential ID per page
+    }));
 
   // Reset to page 1 when search term changes
   useEffect(() => {
@@ -207,8 +199,8 @@ const DriversPage = () => {
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertCircle className="h-12 w-12 text-red-500" />
         <p className="text-lg text-red-500">{error}</p>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="text-emerald-500 border-emerald-500"
           onClick={fetchDrivers}
         >
@@ -231,7 +223,7 @@ const DriversPage = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={handleDeleteDriver}
             >
@@ -248,18 +240,18 @@ const DriversPage = () => {
         </div>
         <p className="text-gray-400 text-sm ml-2">Drivers management</p>
       </div>
-      
+
       <div className="bg-[#F1F7F7] p-6 rounded-lg">
         <div className="w-72 relative mb-5">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input 
-            placeholder="Search driver" 
+          <Input
+            placeholder="Search driver"
             className="pl-10 bg-white border-none rounded-full h-10"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)} 
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         <div className="bg-white rounded-lg overflow-hidden shadow-sm">
           {currentDrivers.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
@@ -280,18 +272,17 @@ const DriversPage = () => {
                 </thead>
                 <tbody>
                   {currentDrivers.map((driver) => (
-                    <tr key={driver.id} className="border-b hover:bg-gray-50">
+                    <tr key={driver.originalId} className="border-b hover:bg-gray-50">
                       <td className="py-4 px-4">{driver.id}</td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={driver.avatar}
-                            alt={`${driver.firstName} ${driver.lastName}`}
-                            className="w-8 h-8 rounded-full object-cover bg-gray-200"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/default-avatar.png';
-                            }}
-                          />
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                            <img
+                              src={driver.avatar}
+                              alt={`${driver.firstName} ${driver.lastName}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                           {driver.firstName}
                         </div>
                       </td>
@@ -305,12 +296,12 @@ const DriversPage = () => {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="text-red-600 hover:bg-red-100"
                             onClick={() => {
-                              setDriverToDelete(driver.id); // Store sequential ID
+                              setDriverToDelete(driver.originalId);
                               setDeleteDialogOpen(true);
                             }}
                           >
@@ -322,7 +313,7 @@ const DriversPage = () => {
                   ))}
                 </tbody>
               </table>
-              
+
               {/* Pagination Controls */}
               <div className="flex items-center justify-between p-4 border-t">
                 <div className="text-sm text-gray-500">
@@ -360,7 +351,7 @@ const DriversPage = () => {
   );
 };
 
-const DriversIcon = (props: any) => (
+const DriversIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
