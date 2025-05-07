@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ChevronLeft, Star, Mail, Phone, MapPin, Hexagon, ChevronRight, Store } from "lucide-react";
+import { ChevronLeft, Star, Mail, Phone, MapPin, Hexagon, ChevronRight, Store, Calendar, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   Select,
@@ -9,6 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Calendar as CalendarComp } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 
 // Sample data for station details
 const stationData = {
@@ -58,7 +61,7 @@ const fuelAvailabilityData = [
     fuelName: "Diesel",
     startDate: "22 Jan 2024",
     endDate: "29 Jan 2024",
-    availableQty: "9"
+    availableQty: "11"
   },
   {
     id: 2,
@@ -73,7 +76,10 @@ export default function StationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("stars");
-  
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [fuelTypeFilter, setFuelTypeFilter] = useState("all");
+
   // Render star ratings
   const renderStars = (rating: number) => {
     return Array(5).fill(0).map((_, index) => (
@@ -157,45 +163,111 @@ export default function StationDetailPage() {
             
             {/* Fuel Availability Report */}
             <div className="bg-white p-6 rounded-lg">
-              <h3 className="text-lg font-medium mb-4">Fuel Availability Report</h3>
-              
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Fuel Availability Report</h3>
                 <Button variant="outline" className="bg-emerald-500 text-white hover:bg-emerald-600 border-none text-xs py-1 h-8">
                   Generate Report
                 </Button>
               </div>
               
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-emerald-500 text-white text-left">
-                    <th className="py-2 px-3 rounded-tl-lg">ID</th>
-                    <th className="py-2 px-3">Fuel Name</th>
-                    <th className="py-2 px-3">Start Date</th>
-                    <th className="py-2 px-3">End Date</th>
-                    <th className="py-2 px-3 rounded-tr-lg text-center">Available (sq)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fuelAvailabilityData.map((item) => (
-                    <tr key={item.id} className="border-b last:border-b-0">
-                      <td className="py-3 px-3">{item.id}</td>
-                      <td className="py-3 px-3">{item.fuelName}</td>
-                      <td className="py-3 px-3">{item.startDate}</td>
-                      <td className="py-3 px-3">{item.endDate}</td>
-                      <td className="py-3 px-3 text-center">{item.availableQty}</td>
+              {/* Date Range Filters */}
+              <div className="flex flex-wrap gap-3 mb-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-auto justify-start text-left font-normal bg-white"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {startDate ? format(startDate, "PPP") : <span>Start date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComp
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-auto justify-start text-left font-normal bg-white"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {endDate ? format(endDate, "PPP") : <span>End date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComp
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <Select value={fuelTypeFilter} onValueChange={setFuelTypeFilter}>
+                  <SelectTrigger className="w-full md:w-[180px] bg-white">
+                    <div className="flex items-center">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Fuel Type" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Fuel Types</SelectItem>
+                    <SelectItem value="Diesel">Diesel</SelectItem>
+                    <SelectItem value="Gasoline">Gasoline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead>
+                    <tr className="bg-emerald-500 text-white text-left">
+                      <th className="py-2 px-3 rounded-tl-lg w-12">ID</th>
+                      <th className="py-2 px-3">Fuel Name</th>
+                      <th className="py-2 px-3">Start Date</th>
+                      <th className="py-2 px-3">End Date</th>
+                      <th className="py-2 px-3 rounded-tr-lg w-32 text-center">Available (hrs)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {fuelAvailabilityData.map((item) => (
+                      <tr key={item.id} className="border-b last:border-b-0 hover:bg-gray-50">
+                        <td className="py-3 px-3">{item.id}</td>
+                        <td className="py-3 px-3">{item.fuelName}</td>
+                        <td className="py-3 px-3">{item.startDate}</td>
+                        <td className="py-3 px-3">{item.endDate}</td>
+                        <td className="py-3 px-3 text-center font-medium">{item.availableQty}</td>
+                      </tr>
+                    ))}
+                    {/* Empty row for spacing */}
+                    <tr>
+                      <td className="py-3 px-3">3</td>
+                      <td className="py-3 px-3"></td>
+                      <td className="py-3 px-3"></td>
+                      <td className="py-3 px-3"></td>
+                      <td className="py-3 px-3"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               
               {/* Pagination */}
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-gray-500">
-                  Showing 1 - 6 of 2
+                  Showing 1 - {Math.min(2, fuelAvailabilityData.length)} of {fuelAvailabilityData.length}
                 </div>
                 <div className="flex items-center gap-1">
                   <button 
-                    className="p-1.5 rounded-full bg-gray-200 text-gray-600" 
+                    className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50" 
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
@@ -217,7 +289,7 @@ export default function StationDetailPage() {
                   ))}
                   
                   <button 
-                    className="p-1.5 rounded-full bg-gray-200 text-gray-600" 
+                    className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50" 
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === 2}
                   >
@@ -310,7 +382,7 @@ export default function StationDetailPage() {
                   
                   <button 
                     className="p-1.5 rounded-full bg-gray-200 text-gray-600" 
-                    onClick={() => handlePageChange(currentPage + 1)}
+                    onClick={() => handlePageChange(currentPage + 1)} 
                     disabled={currentPage === 2}
                   >
                     <ChevronRight className="h-4 w-4" />
