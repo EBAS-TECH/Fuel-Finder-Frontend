@@ -185,7 +185,7 @@ export default function StationsPage() {
         <div className="bg-white rounded-lg overflow-hidden">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-emerald-500 text-white text-left">
+              <tr className="bg-green-500 text-white text-left">
                 <th className="py-4 px-4 w-16">#</th>
                 <th className="py-4 px-4">Station Name</th>
                 <th className="py-4 px-4">TIN Number</th>

@@ -25,6 +25,7 @@ import DriversPage from "./pages/admin/DriversPage";
 import StationsPage from "./pages/admin/StationsPage";
 import StationDetailPage from "./pages/admin/StationDetailPage";
 import ProfilePage from "./pages/admin/ProfilePage";
+import FuelPricePage from "./pages/admin/FuelPricePage";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="drivers/:id" element={<DriverDetailPage />} />
             <Route path="stations" element={<StationsPage />} />
             <Route path="stations/:id" element={<StationDetailPage />} />
+            <Route path="fuel-price" element={<FuelPricePage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
 
