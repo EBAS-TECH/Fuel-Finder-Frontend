@@ -261,7 +261,7 @@ const DriversPage: React.FC = () => {
             <>
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-emerald-500 text-white text-left">
+                  <tr className="bg-green-500 text-white text-left">
                     <th className="py-4 px-4 w-16">ID</th>
                     <th className="py-4 px-4">First Name</th>
                     <th className="py-4 px-4">Last Name</th>

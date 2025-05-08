@@ -29,7 +29,7 @@ const Hero = () => {
         </div>
 
         <div className="animate-fade-in animate-delay-200 relative">
-          <div className="rounded-lg overflow-hidden shadow-2xl">
+          <div className="rounded-lg overflow-hidden ">
             <img
               src={dashboardImage} // Used the imported image
               alt="Fuel Finder Dashboard"

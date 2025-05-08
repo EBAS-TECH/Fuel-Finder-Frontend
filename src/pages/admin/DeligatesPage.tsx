@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Edit, Trash2, Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,78 +8,236 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
-// Sample data for delegates
-const delegatesData = [
-  {
-    id: 1,
-    firstName: "Solomon",
-    lastName: "Bekele",
-    username: "solbek123",
-    email: "solomon123@gmail.com",
-    avatar: "/lovable-uploads/86065143-bd67-4268-aa7e-f5d5b4fac7e6.png",
-  },
-  {
-    id: 2,
-    firstName: "Abrham",
-    lastName: "Ababu",
-    username: "abrah456",
-    email: "abrham456@gmail.com",
-    avatar: "/lovable-uploads/86065143-bd67-4268-aa7e-f5d5b4fac7e6.png",
-  },
-  {
-    id: 3,
-    firstName: "Solomon",
-    lastName: "Ababu",
-    username: "abrah456",
-    email: "abrham456@gmail.com",
-    avatar: "/lovable-uploads/86065143-bd67-4268-aa7e-f5d5b4fac7e6.png",
-  },
-];
+interface Delegate {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  email: string;
+  profile_pic: string;
+  displayId: number;
+}
 
 export default function DelegatesPage() {
+  const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [delegates, setDelegates] = useState<Delegate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDelegate, setSelectedDelegate] = useState<Delegate | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Form states
   const [newDelegate, setNewDelegate] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     username: "",
     email: "",
+    password: "",
   });
 
-  // Pagination handler
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  // Fetch delegates on component mount and when dialog closes
+  useEffect(() => {
+    fetchDelegates();
+  }, [isDialogOpen]);
+
+  const fetchDelegates = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const response = await fetch("http://localhost:5001/api/user", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch delegates");
+      }
+
+      const data = await response.json();
+      if (data.status === 200 && data.message === "Users fetched successfully") {
+        const ministryDelegates = data.data
+          .filter((user: any) => user.role === "MINISTRY_DELEGATE")
+          .map((delegate: any, index: number) => ({
+            ...delegate,
+            displayId: index + 1
+          }));
+        setDelegates(ministryDelegates);
+      } else {
+        throw new Error("Failed to fetch delegates");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch delegates",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewDelegate((prev) => ({ ...prev, [name]: value }));
+    if (selectedDelegate) {
+      setSelectedDelegate({ ...selectedDelegate, [name]: value });
+    } else {
+      setNewDelegate({ ...newDelegate, [name]: value });
+    }
   };
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCreateDelegate = async (e: React.FormEvent) => {
     e.preventDefault();
-    // This would normally add the delegate to the database
-    console.log("New delegate:", newDelegate);
-    // Reset form
-    setNewDelegate({
-      firstName: "",
-      lastName: "",
-      username: "",
-      email: "",
-    });
-    // Close dialog would happen automatically with DialogClose
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const response = await fetch("http://localhost:5001/api/user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          ...newDelegate, 
+          role: "MINISTRY_DELEGATE"
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Delegate created successfully",
+        });
+        setIsDialogOpen(false);
+        setNewDelegate({
+          first_name: "",
+          last_name: "",
+          username: "",
+          email: "",
+          password: "",
+        });
+      } else {
+        throw new Error(data.message || "Failed to create delegate");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create delegate",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateDelegate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDelegate) return;
+
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const response = await fetch(`http://localhost:5001/api/user/${selectedDelegate.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          first_name: selectedDelegate.first_name,
+          last_name: selectedDelegate.last_name,
+          username: selectedDelegate.username,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Delegate updated successfully",
+        });
+        setSelectedDelegate(null);
+      } else {
+        throw new Error(data.message || "Failed to update delegate");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update delegate",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteDelegate = async (id: string) => {
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const response = await fetch(`http://localhost:5001/api/user/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Delegate deleted successfully",
+        });
+        fetchDelegates();
+      } else {
+        throw new Error(data.message || "Failed to delete delegate");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete delegate",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredDelegates = delegates.filter(
+    (delegate) =>
+      delegate.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      delegate.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      delegate.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      delegate.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const delegatesPerPage = 5;
+  const totalPages = Math.ceil(filteredDelegates.length / delegatesPerPage);
+  const paginatedDelegates = filteredDelegates.slice(
+    (currentPage - 1) * delegatesPerPage,
+    currentPage * delegatesPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
     <div>
       <div className="flex items-center mb-5">
         <div className="flex items-center text-emerald-500">
-          <Delegate className="h-6 w-6 mr-2" />
+          <DelegateIcon className="h-6 w-6 mr-2" />
           <h1 className="text-xl font-medium">Delegates</h1>
         </div>
         <p className="text-gray-400 text-sm ml-2">Delegates management</p>
@@ -90,16 +248,16 @@ export default function DelegatesPage() {
           <div className="w-72 relative">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Search station"
+              placeholder="Search delegate"
               className="pl-10 bg-white border-none rounded-full h-10 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
+              <Button className="bg-green-500 hover:bg-green-400 text-white">
                 <Plus className="h-4 w-4 mr-2" /> Add Delegate
               </Button>
             </DialogTrigger>
@@ -107,51 +265,39 @@ export default function DelegatesPage() {
               <DialogHeader>
                 <DialogTitle>Add Delegate</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleCreateDelegate}>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label
-                        htmlFor="firstName"
-                        className="text-sm font-medium mb-1 block"
-                      >
+                      <label className="text-sm font-medium mb-1 block">
                         First Name *
                       </label>
                       <Input
-                        id="firstName"
-                        name="firstName"
+                        name="first_name"
                         placeholder="Enter first name"
-                        value={newDelegate.firstName}
+                        value={newDelegate.first_name}
                         onChange={handleInputChange}
                         required
                       />
                     </div>
                     <div>
-                      <label
-                        htmlFor="lastName"
-                        className="text-sm font-medium mb-1 block"
-                      >
+                      <label className="text-sm font-medium mb-1 block">
                         Last Name *
                       </label>
                       <Input
-                        id="lastName"
-                        name="lastName"
+                        name="last_name"
                         placeholder="Enter last name"
-                        value={newDelegate.lastName}
+                        value={newDelegate.last_name}
                         onChange={handleInputChange}
                         required
                       />
                     </div>
                   </div>
                   <div>
-                    <label
-                      htmlFor="username"
-                      className="text-sm font-medium mb-1 block"
-                    >
+                    <label className="text-sm font-medium mb-1 block">
                       Username *
                     </label>
                     <Input
-                      id="username"
                       name="username"
                       placeholder="Enter username"
                       value={newDelegate.username}
@@ -160,14 +306,10 @@ export default function DelegatesPage() {
                     />
                   </div>
                   <div>
-                    <label
-                      htmlFor="email"
-                      className="text-sm font-medium mb-1 block"
-                    >
+                    <label className="text-sm font-medium mb-1 block">
                       Email *
                     </label>
                     <Input
-                      id="email"
                       name="email"
                       type="email"
                       placeholder="Enter email"
@@ -176,27 +318,119 @@ export default function DelegatesPage() {
                       required
                     />
                   </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Password *
+                    </label>
+                    <Input
+                      name="password"
+                      type="password"
+                      placeholder="Enter password"
+                      value={newDelegate.password}
+                      onChange={handleInputChange}
+                      required
+                      minLength={8}
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end">
-                  <DialogClose asChild>
-                    <Button
-                      type="submit"
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                    >
-                      Add Delegate
-                    </Button>
-                  </DialogClose>
+                  <Button
+                    type="submit"
+                    className="bg-green-500 hover:bg-emerald-400 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Adding..." : "Add Delegate"}
+                  </Button>
                 </div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
+        <Dialog open={!!selectedDelegate} onOpenChange={(open) => !open && setSelectedDelegate(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Delegate</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateDelegate}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      First Name *
+                    </label>
+                    <Input
+                      name="first_name"
+                      placeholder="Enter first name"
+                      value={selectedDelegate?.first_name || ""}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">
+                      Last Name *
+                    </label>
+                    <Input
+                      name="last_name"
+                      placeholder="Enter last name"
+                      value={selectedDelegate?.last_name || ""}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Username *
+                  </label>
+                  <Input
+                    name="username"
+                    placeholder="Enter username"
+                    value={selectedDelegate?.username || ""}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Email
+                  </label>
+                  <Input
+                    name="email"
+                    type="email"
+                    placeholder="Enter email"
+                    value={selectedDelegate?.email || ""}
+                    onChange={handleInputChange}
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedDelegate(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-green-500 hover:bg-emerald-400 text-white"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Updating..." : "Update Delegate"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
         <div className="bg-white rounded-lg overflow-hidden">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-emerald-500 text-white text-left">
-                <th className="py-4 px-4 w-16">ID</th>
+              <tr className="bg-green-500 text-white text-left">
+                <th className="py-4 px-4 w-16">#</th>
                 <th className="py-4 px-4">First Name</th>
                 <th className="py-4 px-4">Last Name</th>
                 <th className="py-4 px-4">Username</th>
@@ -205,84 +439,117 @@ export default function DelegatesPage() {
               </tr>
             </thead>
             <tbody>
-              {delegatesData.map((delegate) => (
-                <tr key={delegate.id} className="border-b hover:bg-gray-50">
-                  <td className="py-4 px-4">{delegate.id}</td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full overflow-hidden">
-                        <img
-                          src={delegate.avatar}
-                          alt={`${delegate.firstName} ${delegate.lastName}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      {delegate.firstName}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">{delegate.lastName}</td>
-                  <td className="py-4 px-4">{delegate.username}</td>
-                  <td className="py-4 px-4 text-emerald-500">
-                    {delegate.email}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex justify-center gap-2">
-                      <button className="p-1.5 bg-emerald-100 rounded-md hover:bg-emerald-200">
-                        <Edit className="h-4 w-4 text-emerald-600" />
-                      </button>
-                      <button className="p-1.5 bg-red-100 rounded-md hover:bg-red-200">
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </button>
-                    </div>
+              {isLoading && !delegates.length ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    Loading delegates...
                   </td>
                 </tr>
-              ))}
+              ) : paginatedDelegates.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500">
+                    No delegates found
+                  </td>
+                </tr>
+              ) : (
+                paginatedDelegates.map((delegate) => (
+                  <tr
+                    key={delegate.id}
+                    className="border-b hover:bg-gray-50"
+                  >
+                    <td className="py-4 px-4">{delegate.displayId}</td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                          {delegate.profile_pic ? (
+                            <img
+                              src={delegate.profile_pic}
+                              alt={`${delegate.first_name} ${delegate.last_name}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium text-gray-600">
+                              {delegate.first_name.charAt(0)}{delegate.last_name.charAt(0)}
+                            </span>
+                          )}
+                        </div>
+                        {delegate.first_name}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">{delegate.last_name}</td>
+                    <td className="py-4 px-4">{delegate.username}</td>
+                    <td className="py-4 px-4 text-emerald-500">
+                      {delegate.email}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          className="p-1.5 bg-emerald-100 rounded-md hover:bg-emerald-200"
+                          onClick={() => setSelectedDelegate(delegate)}
+                        >
+                          <Edit className="h-4 w-4 text-emerald-600" />
+                        </button>
+                        <button
+                          className="p-1.5 bg-red-100 rounded-md hover:bg-red-200"
+                          onClick={() => handleDeleteDelegate(delegate.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-gray-500">Showing 1 - 3 of 2</div>
-          <div className="flex items-center gap-1">
-            <button
-              className="p-1.5 rounded-full bg-gray-200 text-gray-600"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-
-            {[1, 2].map((page) => (
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-500">
+              Showing {(currentPage - 1) * delegatesPerPage + 1} -{" "}
+              {Math.min(currentPage * delegatesPerPage, filteredDelegates.length)} of{" "}
+              {filteredDelegates.length}
+            </div>
+            <div className="flex items-center gap-1">
               <button
-                key={page}
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentPage === page
-                    ? "bg-emerald-500 text-white"
-                    : "bg-gray-200 text-gray-600"
-                }`}
-                onClick={() => handlePageChange(page)}
+                className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
               >
-                {page}
+                <ArrowLeft className="h-4 w-4" />
               </button>
-            ))}
 
-            <button
-              className="p-1.5 rounded-full bg-gray-200 text-gray-600"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === 2}
-            >
-              <ArrowRight className="h-4 w-4" />
-            </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentPage === page
+                      ? "bg-emerald-500 text-white"
+                      : "bg-gray-200 text-gray-600"
+                  }`}
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-// Custom icon components
-const Delegate = (props: any) => {
+const DelegateIcon = (props: any) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
