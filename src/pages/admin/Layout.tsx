@@ -2,9 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, User, Users, UserRound, Search } from "lucide-react";
+import {
+  LayoutDashboard,
+  User,
+  Users,
+  UserRound,
+  Search,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import axios from "axios";
-import logoImage from '@/assets/logo.png';
+import logoImage from "@/assets/logo.png";
 import { useToast } from "@/components/ui/use-toast";
 import {
   DropdownMenu,
@@ -12,6 +21,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  email: string;
+  role: string;
+  profile_pic: string;
+  verified: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -27,8 +49,8 @@ const SidebarItem = ({ icon, label, to, active }: SidebarItemProps) => {
       className={cn(
         "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
         active
-          ? "bg-emerald-100 text-emerald-600"
-          : "text-gray-500 hover:bg-emerald-50"
+          ? "bg-green-500 text-white"
+          : "text-gray-600 hover:bg-green-100 hover:text-green-700"
       )}
     >
       {icon}
@@ -37,19 +59,6 @@ const SidebarItem = ({ icon, label, to, active }: SidebarItemProps) => {
   );
 };
 
-interface User {
-  id: string;
-  first_name: string;
-  last_name: string;
-  username: string;
-  email: string;
-  role: string;
-  profile_pic: string;
-  verified: boolean;
-  created_at: string;
-  updated_at: string | null;
-}
-
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,39 +66,45 @@ export default function AdminLayout() {
   const pathName = location.pathname;
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   useEffect(() => {
     const initializeUser = async () => {
       try {
-        // First try to get user data from localStorage/sessionStorage
-        const storedUser =
-          localStorage.getItem("userData") ||
-          sessionStorage.getItem("userData");
+        // Check both storage locations
+        const storedUser = localStorage.getItem("userData") || sessionStorage.getItem("userData");
 
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-
-          // Fetch updated user data from API
-          try {
-            const response = await axios.get(
-              `http://localhost:5001/api/user/${parsedUser.id}`
-            );
-            setUser(response.data.data);
-
-            // Update the stored user data with fresh data
-            if (localStorage.getItem("userData")) {
-              localStorage.setItem("userData", JSON.stringify(response.data.data));
-            } else {
-              sessionStorage.setItem("userData", JSON.stringify(response.data.data));
-            }
-          } catch (apiError) {
-            console.error("Failed to fetch updated user data:", apiError);
-            // Continue with the stored data if API fails
-          }
-        } else {
+        if (!storedUser) {
           throw new Error("No user data found");
         }
+
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+
+        try {
+          // Optional: Fetch fresh user data from API
+          const response = await axios.get(
+            `http://localhost:5001/api/user/${parsedUser.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("authToken") || sessionStorage.getItem("authToken")}`
+              }
+            }
+          );
+          
+          const updatedUser = response.data.data;
+          setUser(updatedUser);
+          
+          // Update the appropriate storage
+          if (localStorage.getItem("userData")) {
+            localStorage.setItem("userData", JSON.stringify(updatedUser));
+          } else {
+            sessionStorage.setItem("userData", JSON.stringify(updatedUser));
+          }
+        } catch (apiError) {
+          console.error("Failed to fetch updated user data:", apiError);
+        }
+
       } catch (error) {
         console.error("User initialization error:", error);
         toast({
@@ -104,34 +119,44 @@ export default function AdminLayout() {
     };
 
     initializeUser();
+
+    // Handle profile updates from ProfilePage
+    const handleUserUpdate = () => {
+      const storedUser = localStorage.getItem("userData") || sessionStorage.getItem("userData");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    };
+
+    // Listen for both custom events and storage changes
+    window.addEventListener("userUpdated", handleUserUpdate);
+    window.addEventListener("storage", handleUserUpdate);
+
+    return () => {
+      window.removeEventListener("userUpdated", handleUserUpdate);
+      window.removeEventListener("storage", handleUserUpdate);
+    };
   }, [toast, navigate]);
 
   const handleLogout = () => {
-    // Clear all auth-related storage
+    // Clear both storage types
     localStorage.removeItem("authToken");
-    localStorage.removeItem("userRole");
     localStorage.removeItem("userData");
+    localStorage.removeItem("userRole");
     sessionStorage.removeItem("authToken");
-    sessionStorage.removeItem("userRole");
     sessionStorage.removeItem("userData");
+    sessionStorage.removeItem("userRole");
 
-    // Show logout message
     toast({
       title: "Logged out successfully",
       description: "You have been logged out",
     });
-
-    // Redirect to home page
     navigate("/");
-  };
-
-  const handleProfileClick = () => {
-    navigate("/admin/dashboard");
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-10 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         Loading...
       </div>
     );
@@ -139,29 +164,87 @@ export default function AdminLayout() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-10 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         No user data available
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="min-h-screen bg-white shadow-sm">
-        <div className="flex">
-          {/* Sidebar */}
-          <div className="w-[220px] border-r min-h-screen p-4">
-            <div className="flex justify-center mb-2 mt-1">
-              <Link to="/admin/dashboard">
-                <img
-                  src={logoImage}
-                  alt="Fuel Finder Logo"
-                  className="w-20 h-auto"
-                />
-              </Link>
-            </div>
+    <div className="min-h-screen bg-green-50 flex flex-col">
+      {/* Top Navigation Bar */}
+      <header className="bg-white shadow-sm rounded-b-2xl z-10">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center space-x-4">
+            <Link to="/admin/dashboard" className="flex items-center">
+              <img
+                src={logoImage}
+                alt="Fuel Finder Logo"
+                className="w-16 ml-12 h-auto"
+              />
+            </Link>
+          </div>
 
-            <div className="space-y-1 mt-6">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <DropdownMenu onOpenChange={setProfileDropdownOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 hover:bg-green-100 px-3 py-1 rounded-full transition-all">
+                    <div className="text-right">
+                      <h4 className="text-green-600 font-medium">
+                        {user.first_name} {user.last_name}
+                      </h4>
+                      <p className="text-xs text-gray-500 capitalize">
+                        {user.role}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-green-100">
+                      <img
+                        src={user.profile_pic}
+                        alt="User Avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    {profileDropdownOpen ? (
+                      <ChevronUp className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-green-600" />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 mt-2" align="end">
+                  <div className="px-2 py-1.5 text-sm font-medium text-gray-500">
+                    My Account
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/admin/profile"
+                      className="w-full cursor-pointer flex items-center gap-2 text-gray-700"
+                    >
+                      <UserRound className="h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1">
+        {/* Sidebar */}
+        <aside className="w-64 bg-white shadow-sm rounded-r-2xl mt-2 ml-2 h-[calc(100vh-5rem)] sticky top-4">
+          <div className="p-4 h-full flex flex-col">
+            <div className="space-y-2 mt-4">
               <SidebarItem
                 icon={<LayoutDashboard className="h-5 w-5" />}
                 label="Dashboard"
@@ -186,16 +269,44 @@ export default function AdminLayout() {
                 to="/admin/delegates"
                 active={pathName.includes("/admin/delegates")}
               />
-               <SidebarItem 
-            icon={<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M8 10h.01M16 10h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>} 
-            label="Fuel Price" 
-            to="/admin/fuel-price"
-            active={pathName.includes("/admin/fuel-price")}
-          />
+              {/* Fuel Price menu item - preserved exactly */}
+              <SidebarItem
+                icon={
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12 6v6l4 2"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M8 10h.01M16 10h.01"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                }
+                label="Fuel Price"
+                to="/admin/fuel-price"
+                active={pathName.includes("/admin/fuel-price")}
+              />
               <SidebarItem
                 icon={<UserRound className="h-5 w-5" />}
                 label="Profile"
@@ -204,65 +315,12 @@ export default function AdminLayout() {
               />
             </div>
           </div>
+        </aside>
 
-          {/* Main content */}
-          <div className="flex-1">
-            {/* Header */}
-            <header className="flex items-center justify-between px-6 py-4 border-b">
-              <div className="w-96 relative ml-24">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Search..."
-                  className="pl-10 bg-emerald-50 border border-emerald-100 rounded-xl h-10 focus:border-400 w-full"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <h4 className="text-emerald-500 font-medium">
-                    {user.first_name} {user.last_name}
-                  </h4>
-                  <p className="text-xs text-gray-400">{user.role}</p>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      onClick={handleProfileClick}
-                      className="h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <img
-                        src={user.profile_pic}
-                        alt="User Avatar"
-                        className="h-10 w-10 rounded-full"
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuItem asChild>
-                      <Link
-                        to="/admin/profile"
-                        className="w-full cursor-pointer"
-                      >
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                    >
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </header>
-
-            {/* Page content */}
-            <div className="p-6">
-              <Outlet />
-            </div>
-          </div>
-        </div>
+        {/* Page Content */}
+        <main className="flex-1 p-6 ml-4 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

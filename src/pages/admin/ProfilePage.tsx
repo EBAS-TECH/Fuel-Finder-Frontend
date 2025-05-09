@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Edit, User } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { useOutletContext } from "react-router-dom";
 
 interface UserData {
   id: string;
@@ -37,42 +38,27 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const userId = localStorage.getItem("userId");
-      if (!userId) {
-        toast({
-          title: "Error",
-          description: "User not authenticated",
-          variant: "destructive",
-        });
-        return;
-      }
-
+    const loadUserData = () => {
       try {
-        const response = await fetch(`http://localhost:5001/api/user/${userId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("authToken")}`
-          }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch user data");
+        // Check both storage locations
+        const storedUser = localStorage.getItem("userData") || sessionStorage.getItem("userData");
+        
+        if (!storedUser) {
+          throw new Error("No user data found");
         }
 
-        setUserData(data.data);
+        const parsedUser = JSON.parse(storedUser);
+        setUserData(parsedUser);
         setEditedUser({
-          firstName: data.data.first_name,
-          lastName: data.data.last_name,
-          username: data.data.username,
+          firstName: parsedUser.first_name,
+          lastName: parsedUser.last_name,
+          username: parsedUser.username,
         });
-      } catch (error: any) {
+      } catch (error) {
+        console.error("Failed to load user data:", error);
         toast({
           title: "Error",
-          description: error.message,
+          description: "Failed to load user data",
           variant: "destructive",
         });
       } finally {
@@ -80,7 +66,7 @@ export default function ProfilePage() {
       }
     };
 
-    fetchUserData();
+    loadUserData();
   }, []);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -100,7 +86,7 @@ export default function ProfilePage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+          "Authorization": `Bearer ${localStorage.getItem("authToken") || sessionStorage.getItem("authToken")}`
         },
         body: JSON.stringify({
           oldPassword,
@@ -114,7 +100,6 @@ export default function ProfilePage() {
         throw new Error(data.message || "Failed to change password");
       }
 
-      // Reset form fields
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -147,7 +132,7 @@ export default function ProfilePage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+          "Authorization": `Bearer ${localStorage.getItem("authToken") || sessionStorage.getItem("authToken")}`
         },
         body: JSON.stringify({
           first_name: editedUser.firstName,
@@ -162,24 +147,25 @@ export default function ProfilePage() {
         throw new Error(data.message || "Failed to update profile");
       }
 
-      // Update local storage if username changed
-      if (editedUser.username !== userData.username) {
-        const userDataFromStorage = JSON.parse(localStorage.getItem("userData") || "{}");
-        localStorage.setItem("userData", JSON.stringify({
-          ...userDataFromStorage,
-          username: editedUser.username,
-          first_name: editedUser.firstName,
-          last_name: editedUser.lastName
-        }));
-      }
-
-      // Update the displayed user data
-      setUserData(prev => prev ? {
-        ...prev,
+      // Create updated user object
+      const updatedUser = {
+        ...userData,
         first_name: editedUser.firstName,
         last_name: editedUser.lastName,
         username: editedUser.username
-      } : null);
+      };
+
+      // Determine which storage was used originally
+      const storage = localStorage.getItem("userData") ? localStorage : sessionStorage;
+      
+      // Update the correct storage
+      storage.setItem("userData", JSON.stringify(updatedUser));
+      
+      // Update local state
+      setUserData(updatedUser);
+
+      // Notify other components (like AdminLayout)
+      window.dispatchEvent(new CustomEvent("userUpdated"));
 
       toast({
         title: "Success",
