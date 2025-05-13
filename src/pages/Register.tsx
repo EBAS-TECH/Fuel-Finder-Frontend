@@ -4,7 +4,7 @@ import PrimaryButton from "@/components/PrimaryButton";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import logoImage from '@/assets/newlog.png';
+import logoImage from "@/assets/newlog.png";
 
 type UserType = "drivers" | "stations";
 
@@ -163,8 +163,8 @@ const Register = () => {
         <div className="flex flex-col items-center max-w-md">
           {/* Fixed Logo */}
           <div className="mb-12 scale-150">
-            <img 
-              src={logoImage} 
+            <img
+              src={logoImage}
               alt="Fuel Finder Logo"
               className="h-[160px] w-auto"
             />
@@ -250,38 +250,6 @@ const Register = () => {
               </button>
             </div>
           </div>
-
-          {/* Google Sign Up Button */}
-          <Button
-            variant="outline"
-            className="w-full mb-6 flex items-center justify-center gap-2 py-6 bg-fuelGreen-50 hover:bg-fuelGreen-100"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M19.6 10.2273C19.6 9.51823 19.5364 8.84549 19.4182 8.18185H10V12.0546H15.3818C15.15 13.3 14.4455 14.3591 13.3864 15.0682V17.5773H16.6182C18.5091 15.8364 19.6 13.2728 19.6 10.2273Z"
-                fill="#4285F4"
-              />
-              <path
-                d="M10 20.0001C12.7 20.0001 14.9636 19.1046 16.6182 17.5773L13.3864 15.0682C12.4909 15.6682 11.3455 16.0228 10 16.0228C7.39545 16.0228 5.19091 14.2637 4.40455 11.9001H1.06364V14.4909C2.70909 17.7591 6.09091 20.0001 10 20.0001Z"
-                fill="#34A853"
-              />
-              <path
-                d="M4.40455 11.8999C4.20455 11.2999 4.09091 10.6636 4.09091 9.99994C4.09091 9.33631 4.20455 8.69994 4.40455 8.09994V5.50903H1.06364C0.386364 6.85903 0 8.38631 0 9.99994C0 11.6136 0.386364 13.1409 1.06364 14.4909L4.40455 11.8999Z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M10 3.97727C11.4682 3.97727 12.7864 4.48182 13.8227 5.47273L16.6909 2.60455C14.9591 0.990909 12.7 0 10 0C6.09091 0 2.70909 2.24091 1.06364 5.50909L4.40455 8.1C5.19091 5.73636 7.39545 3.97727 10 3.97727Z"
-                fill="#EA4335"
-              />
-            </svg>
-            Sign up with Google
-          </Button>
 
           <div className="flex items-center my-4">
             <div className="flex-grow border-t border-gray-300"></div>

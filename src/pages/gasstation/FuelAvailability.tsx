@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,53 +19,227 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronDown } from "lucide-react";
-
-// Mock data
-const initialFuels = [
-  {
-    id: 1,
-    name: "Diesel",
-    startDate: "22 Jan 2024",
-    endDate: "29 Jan 2024",
-    availableHrs: 11,
-    available: true,
-  },
-  {
-    id: 2,
-    name: "Gasoline",
-    startDate: "22 Jan 2024",
-    endDate: "29 Jan 2024",
-    availableHrs: 6.5,
-    available: false,
-  },
-  {
-    id: 3,
-    name: "Premium",
-    startDate: "22 Jan 2024",
-    endDate: "29 Jan 2024",
-    availableHrs: 8,
-    available: true,
-  },
-];
+import { useToast } from "@/components/ui/use-toast";
 
 const FuelAvailability = () => {
-  const [fuels] = useState(initialFuels);
+  const { toast } = useToast();
+  const [fuels, setFuels] = useState([]);
+  const [filteredFuels, setFilteredFuels] = useState([]);
   const [page, setPage] = useState(1);
   const [fuelAvailability, setFuelAvailability] = useState({
-    diesel: true,
-    gasoline: false,
-    premium: true,
+    diesel: false,
+    petrol: false,
   });
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [selectedFuel, setSelectedFuel] = useState("");
+  const [selectedFuel, setSelectedFuel] = useState("all");
+  const [stationId, setStationId] = useState("");
 
-  const toggleFuel = (key: string) => {
-    setFuelAvailability((prev) => ({
-      ...prev,
-      [key]: !prev[key as keyof typeof prev],
-    }));
+  // Fetch station ID
+  useEffect(() => {
+    const fetchStationId = async () => {
+      try {
+        const token =
+          localStorage.getItem("authToken") ||
+          sessionStorage.getItem("authToken");
+        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+        const response = await fetch(
+          `http://localhost:5001/api/station/user/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch station details");
+        }
+
+        const data = await response.json();
+        setStationId(data.data.id);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchStationId();
+  }, []);
+
+  // Fetch fuel availability data
+  useEffect(() => {
+    if (!stationId) return;
+
+    const fetchFuelAvailability = async () => {
+      try {
+        const token =
+          localStorage.getItem("authToken") ||
+          sessionStorage.getItem("authToken");
+        const response = await fetch(
+          `http://localhost:5001/api/availability/station/${stationId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch fuel availability data");
+        }
+
+        const data = await response.json();
+        const fuelsWithHours = data.data.map((fuel) => ({
+          ...fuel,
+          available_hrs: (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2),
+        }));
+        setFuels(fuelsWithHours);
+        setFilteredFuels(fuelsWithHours);
+
+        // Update fuel availability status
+        const initialAvailability = {
+          diesel: false,
+          petrol: false,
+        };
+        data.data.forEach((fuel) => {
+          initialAvailability[fuel.fuel_type.toLowerCase()] = fuel.available;
+        });
+        setFuelAvailability(initialAvailability);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchFuelAvailability();
+  }, [stationId]);
+
+  const toggleFuel = async (key) => {
+    try {
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
+      
+      const fuelType = key.toUpperCase();
+      const endpoint = fuelAvailability[key] 
+        ? `http://localhost:5001/api/availability/${stationId}`
+        : `http://localhost:5001/api/availability/isAvailable/${stationId}`;
+      
+      const method = fuelAvailability[key] ? "DELETE" : "PUT";
+
+      const response = await fetch(endpoint, {
+        method: method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fuel_type: fuelType
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update fuel availability");
+      }
+
+      const data = await response.json();
+      setFuelAvailability((prev) => ({
+        ...prev,
+        [key]: !prev[key as keyof typeof prev],
+      }));
+
+      toast({
+        title: "Success",
+        description: data.message,
+      });
+
+      // Refresh the data after toggling
+      const refreshResponse = await fetch(
+        `http://localhost:5001/api/availability/station/${stationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        const fuelsWithHours = refreshData.data.map((fuel) => ({
+          ...fuel,
+          available_hrs: (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2),
+        }));
+        setFuels(fuelsWithHours);
+        setFilteredFuels(fuelsWithHours);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
+
+  const filterFuelAvailability = async () => {
+    try {
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
+      const response = await fetch(
+        "http://localhost:5001/api/availability/duration",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            start_date: startDate ? format(startDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
+            end_date: endDate ? format(endDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to filter fuel availability data");
+      }
+
+      const data = await response.json();
+      const filteredData = data.data.map((fuel) => ({
+        ...fuel,
+        available_hrs: (parseFloat(fuel.total_milliseconds) / (1000 * 60 * 60)).toFixed(2),
+      }));
+
+      let result = filteredData;
+      if (selectedFuel !== "all") {
+        result = filteredData.filter((fuel) => fuel.fuel_type.toLowerCase() === selectedFuel);
+      }
+
+      setFilteredFuels(result);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (selectedFuel === "all") {
+      setFilteredFuels(fuels);
+    } else {
+      setFilteredFuels(fuels.filter((fuel) => fuel.fuel_type.toLowerCase() === selectedFuel));
+    }
+  }, [selectedFuel, fuels]);
 
   return (
     <div className="p-6">
@@ -113,20 +287,21 @@ const FuelAvailability = () => {
         <div className="md:col-span-2">
           <Card className="p-0 overflow-hidden">
             <div className="p-4 flex items-center justify-between flex-wrap gap-3 bg-fuelGreen-50">
-              <h2 className="font-medium text-fuelGreen-700">Fuel Availability</h2>
+              <h2 className="font-medium text-fuelGreen-700">
+                Fuel Availability
+              </h2>
               <div className="flex flex-wrap gap-2">
                 {/* Fuel Type Dropdown */}
                 <Select value={selectedFuel} onValueChange={setSelectedFuel}>
                   <SelectTrigger className="w-[150px] bg-white">
                     <SelectValue placeholder="Fuel Type">
-                      {selectedFuel ? selectedFuel : "Fuel Type"}
+                      {selectedFuel ? selectedFuel.charAt(0).toUpperCase() + selectedFuel.slice(1) : "Fuel Type"}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Fuel Types</SelectItem>
                     <SelectItem value="diesel">Diesel</SelectItem>
-                    <SelectItem value="gasoline">Gasoline</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="petrol">Petrol</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -138,7 +313,9 @@ const FuelAvailability = () => {
                       className="w-[150px] justify-between text-left font-normal"
                     >
                       <span className="text-muted-foreground">
-                        {startDate ? format(startDate, "dd MMM yyyy") : "Start Date"}
+                        {startDate
+                          ? format(startDate, "dd MMM yyyy")
+                          : "Start Date"}
                       </span>
                       <CalendarIcon className="h-4 w-4 opacity-50" />
                     </Button>
@@ -176,7 +353,10 @@ const FuelAvailability = () => {
                   </PopoverContent>
                 </Popover>
 
-                <Button className="bg-fuelGreen-500 hover:bg-fuelGreen-600">
+                <Button
+                  className="bg-fuelGreen-500 hover:bg-fuelGreen-600"
+                  onClick={filterFuelAvailability}
+                >
                   Filter
                 </Button>
               </div>
@@ -194,17 +374,26 @@ const FuelAvailability = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {fuels.map((fuel) => (
-                    <tr key={fuel.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">{fuel.id}</td>
-                      <td className="py-3 px-4 font-medium">{fuel.name}</td>
-                      <td className="py-3 px-4">{fuel.startDate}</td>
-                      <td className="py-3 px-4">{fuel.endDate}</td>
+                  {filteredFuels.map((fuel, index) => (
+                    <tr
+                      key={fuel.id}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
+                      <td className="py-3 px-4">{index + 1}</td>
+                      <td className="py-3 px-4 font-medium">
+                        {fuel.fuel_type}
+                      </td>
+                      <td className="py-3 px-4">{fuel.up_time}</td>
                       <td className="py-3 px-4">
-                        {fuel.availableHrs === 11 ? (
-                          <span className="text-fuelGreen-600 font-medium">11</span>
+                        {fuel.down_time || "N/A"}
+                      </td>
+                      <td className="py-3 px-4">
+                        {fuel.available_hrs ? (
+                          <span className="text-fuelGreen-600 font-medium">
+                            {fuel.available_hrs}
+                          </span>
                         ) : (
-                          fuel.availableHrs
+                          "N/A"
                         )}
                       </td>
                     </tr>
@@ -215,7 +404,7 @@ const FuelAvailability = () => {
 
             <div className="p-4 flex items-center justify-between border-t">
               <div className="text-sm text-gray-500">
-                Showing {fuels.length} fuel types
+                Showing {filteredFuels.length} fuel types
               </div>
               <div className="flex gap-1">
                 <Button
@@ -279,12 +468,18 @@ const FuelAvailability = () => {
 
         <div>
           <Card className="p-4">
-            <h2 className="text-lg font-medium mb-4 text-fuelGreen-700">Fuel Status</h2>
+            <h2 className="text-lg font-medium mb-4 text-fuelGreen-700">
+              Fuel Status
+            </h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="diesel" className="font-medium">Diesel</Label>
-                  <p className="text-xs text-gray-500 mt-1">Regular diesel fuel</p>
+                  <Label htmlFor="diesel" className="font-medium">
+                    Diesel
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Regular diesel fuel
+                  </p>
                 </div>
                 <Switch
                   id="diesel"
@@ -296,26 +491,15 @@ const FuelAvailability = () => {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="gasoline" className="font-medium">Gasoline</Label>
+                  <Label htmlFor="petrol" className="font-medium">
+                    Petrol
+                  </Label>
                   <p className="text-xs text-gray-500 mt-1">Regular unleaded</p>
                 </div>
                 <Switch
-                  id="gasoline"
-                  checked={fuelAvailability.gasoline}
-                  onCheckedChange={() => toggleFuel("gasoline")}
-                  className="data-[state=checked]:bg-fuelGreen-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="premium" className="font-medium">Premium</Label>
-                  <p className="text-xs text-gray-500 mt-1">High octane fuel</p>
-                </div>
-                <Switch
-                  id="premium"
-                  checked={fuelAvailability.premium}
-                  onCheckedChange={() => toggleFuel("premium")}
+                  id="petrol"
+                  checked={fuelAvailability.petrol}
+                  onCheckedChange={() => toggleFuel("petrol")}
                   className="data-[state=checked]:bg-fuelGreen-500"
                 />
               </div>
@@ -333,7 +517,9 @@ const FuelAvailability = () => {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-amber-800">Important Notice</p>
+                  <p className="text-sm font-medium text-amber-800">
+                    Important Notice
+                  </p>
                   <p className="text-xs text-amber-700 mt-1">
                     Remember to keep your fuel status updated for customers.
                   </p>
