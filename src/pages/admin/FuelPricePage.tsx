@@ -22,15 +22,20 @@ interface FuelPrice {
   fuel_type: string;
   price: number;
   created_at: string;
-  updated_at: string | null;
+  effective_upto: string | null;
 }
+
+const Spinner = () => (
+  <div className="flex justify-center items-center h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+  </div>
+);
 
 export default function FuelPricePage() {
   const [fuelPrices, setFuelPrices] = useState<FuelPrice[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTypeDialog, setDeleteTypeDialog] = useState({
     open: false,
@@ -38,22 +43,19 @@ export default function FuelPricePage() {
   });
 
   // Form state
-  const [editId, setEditId] = useState<string | null>(null);
   const [fuelType, setFuelType] = useState("PETROL");
   const [price, setPrice] = useState("");
-  const [sinceDate, setSinceDate] = useState<Date | undefined>(new Date());
-  const [effectiveUpto, setEffectiveUpto] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [error, setError] = useState(""); // New state for error message
 
-  // Get auth token from localStorage
   const getAuthToken = () => {
     return localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
   };
 
-  // Check if user is authenticated
   const checkAuth = () => {
     const token = getAuthToken();
     if (!token) {
-      // Redirect to login if not authenticated
       window.location.href = "/login";
       return false;
     }
@@ -97,33 +99,36 @@ export default function FuelPricePage() {
     fetchFuelPrices();
   }, []);
 
-  // Filtered fuel types based on search
   const filteredFuelPrices = fuelPrices.filter(fuel =>
     fuel.fuel_type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const fuelTypeExists = (type: string) => {
+    return fuelPrices.some(fuel => fuel.fuel_type === type);
+  };
+
   const handleAddFuelPrice = () => {
     if (!checkAuth()) return;
 
-    setEditId(null);
     setFuelType("PETROL");
     setPrice("");
-    setSinceDate(new Date());
-    setEffectiveUpto(new Date());
+    setStartDate(new Date());
+    setEndDate(null);
     setIsEditMode(false);
     setIsDialogOpen(true);
+    setError(""); // Reset error message
   };
 
   const handleEditFuelPrice = (fuel: FuelPrice) => {
     if (!checkAuth()) return;
 
-    setEditId(fuel.id);
     setFuelType(fuel.fuel_type);
     setPrice(fuel.price.toString());
-    setSinceDate(new Date(fuel.created_at));
-    setEffectiveUpto(fuel.updated_at ? new Date(fuel.updated_at) : new Date());
+    setStartDate(new Date(fuel.created_at));
+    setEndDate(fuel.effective_upto ? new Date(fuel.effective_upto) : null);
     setIsEditMode(true);
     setIsDialogOpen(true);
+    setError(""); // Reset error message
   };
 
   const handleDeleteFuelPriceByType = async (fuelType: string) => {
@@ -147,7 +152,9 @@ export default function FuelPricePage() {
         throw new Error(data.message || "Failed to delete fuel price");
       }
 
-      setFuelPrices(fuelPrices.filter(fuel => fuel.fuel_type !== fuelType));
+      const updatedPrices = fuelPrices.filter(fuel => fuel.fuel_type !== fuelType);
+      setFuelPrices(updatedPrices);
+
       toast({
         title: "Success",
         description: `All ${fuelType} prices deleted successfully`,
@@ -181,22 +188,19 @@ export default function FuelPricePage() {
 
     if (!checkAuth()) return;
 
-    if (!price || !sinceDate || !effectiveUpto) {
-      toast({
-        title: "Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
+    if (!price || !startDate) {
+      setError("Please fill all required fields");
       return;
     }
 
     const priceValue = parseFloat(price);
-    if (isNaN(priceValue) || priceValue <= 0) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid price",
-        variant: "destructive",
-      });
+    if (isNaN(priceValue)) {
+      setError("Please enter a valid price");
+      return;
+    }
+
+    if (!isEditMode && fuelTypeExists(fuelType)) {
+      setError(`${fuelType} price already exists. Please edit the existing one.`);
       return;
     }
 
@@ -206,79 +210,60 @@ export default function FuelPricePage() {
         throw new Error("User not authenticated");
       }
 
-      if (isEditMode && editId) {
-        // Update existing fuel price
-        const response = await fetch(`http://localhost:5001/api/price/${editId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            fuel_type: fuelType,
-            price: priceValue
-          }),
-        });
+      const payload = {
+        fuel_type: fuelType,
+        price: priceValue,
+        created_at: startDate.toISOString(),
+        effective_upto: endDate?.toISOString() || null
+      };
 
-        const data = await response.json();
+      const url = isEditMode
+        ? `http://localhost:5001/api/price/${fuelType}`
+        : "http://localhost:5001/api/price";
 
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to update fuel price");
-        }
+      const method = isEditMode ? "PUT" : "POST";
 
-        setFuelPrices(fuelPrices.map(fuel =>
-          fuel.id === editId
-            ? { ...fuel, fuel_type: fuelType, price: priceValue }
-            : fuel
-        ));
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
 
-        toast({
-          title: "Success",
-          description: "Fuel price updated successfully",
-        });
-      } else {
-        // Create new fuel price
-        const response = await fetch("http://localhost:5001/api/price", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            fuel_type: fuelType,
-            price: priceValue
-          }),
-        });
+      const data = await response.json();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to create fuel price");
-        }
-
-        setFuelPrices([...fuelPrices, data.data]);
-        toast({
-          title: "Success",
-          description: "Fuel price created successfully",
-        });
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to ${isEditMode ? 'update' : 'create'} fuel price`);
       }
+
+      if (isEditMode) {
+        setFuelPrices(fuelPrices.map(fuel =>
+          fuel.fuel_type === fuelType ? data.data : fuel
+        ));
+      } else {
+        setFuelPrices([...fuelPrices, data.data]);
+      }
+
+      toast({
+        title: "Success",
+        description: `Fuel price ${isEditMode ? 'updated' : 'created'} successfully`,
+      });
 
       setIsDialogOpen(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save fuel price",
-        variant: "destructive",
-      });
+      setError(error.message || "Failed to save fuel price");
     }
   };
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return <Spinner />;
   }
 
   return (
     <div>
+      {/* Header and search section */}
       <div className="flex items-center mb-5">
         <div className="flex items-center text-green-500">
           <svg className="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -315,11 +300,11 @@ export default function FuelPricePage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="bg-green-500 text-white font-normal w-16 text-center">ID</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Fuel Type Name</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Fuel Price (Br/L)</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Since</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Effective Upto</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal text-center">Action</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Fuel Type</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Price (Br/L)</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Start Date</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">End Date</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -328,9 +313,9 @@ export default function FuelPricePage() {
                   <TableCell className="text-center">{index + 1}</TableCell>
                   <TableCell>{fuel.fuel_type}</TableCell>
                   <TableCell>{fuel.price.toFixed(2)}</TableCell>
-                  <TableCell>{format(new Date(fuel.created_at), "MMM yyyy")}</TableCell>
+                  <TableCell>{format(new Date(fuel.created_at), "MMM d, yyyy")}</TableCell>
                   <TableCell>
-                    {fuel.updated_at ? format(new Date(fuel.updated_at), "MMM yyyy") : "Current"}
+                    {fuel.effective_upto ? format(new Date(fuel.effective_upto), "MMM d, yyyy") : "N/A"}
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center space-x-2">
@@ -347,7 +332,6 @@ export default function FuelPricePage() {
                         size="icon"
                         onClick={() => confirmDeleteByType(fuel.fuel_type)}
                         className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                        title="Delete all prices for this fuel type"
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={2.5} />
                       </Button>
@@ -358,61 +342,9 @@ export default function FuelPricePage() {
             </TableBody>
           </Table>
         </div>
-
-        <div className="flex justify-between items-center mt-4">
-          <div className="text-sm text-gray-500">
-            Showing 1 - {filteredFuelPrices.length} of {filteredFuelPrices.length}
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              className={`p-1.5 rounded-full ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-600'}`}
-              disabled={currentPage === 1}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setCurrentPage(1)}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${currentPage === 1 ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'}`}
-            >
-              1
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(1, currentPage + 1))}
-              className={`p-1.5 rounded-full ${currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-600'}`}
-              disabled={currentPage === 1}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Add/Edit Fuel Type Dialog */}
+      {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -420,39 +352,34 @@ export default function FuelPricePage() {
               {isEditMode ? "Edit Fuel Price" : "Add Fuel Price"}
             </DialogTitle>
           </DialogHeader>
-          <button
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-            onClick={() => setIsDialogOpen(false)}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </button>
 
           <form onSubmit={handleFormSubmit}>
             <div className="space-y-4 py-2">
+              {/* Fuel Type Select */}
               <div>
-                <label htmlFor="fuelType" className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1">
                   Fuel Type <span className="text-red-500">*</span>
                 </label>
                 <select
-                  id="fuelType"
                   value={fuelType}
                   onChange={(e) => setFuelType(e.target.value)}
                   className="w-full p-2 border rounded-md bg-[#F2FCE2] focus:ring-green-200 focus:border-green-300"
+                  disabled={isEditMode}
                 >
                   <option value="PETROL">Petrol</option>
                   <option value="DIESEL">Diesel</option>
                   <option value="CNG">CNG</option>
                   <option value="LPG">LPG</option>
                 </select>
+                {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
               </div>
 
+              {/* Price Input */}
               <div>
-                <label htmlFor="price" className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1">
                   Price (Br/L) <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  id="price"
                   placeholder="Enter price"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
@@ -463,9 +390,10 @@ export default function FuelPricePage() {
                 />
               </div>
 
+              {/* Start Date Picker */}
               <div>
-                <label htmlFor="sinceDate" className="block text-sm font-medium mb-1">
-                  Price Since <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium mb-1">
+                  Start Date <span className="text-red-500">*</span>
                 </label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -473,27 +401,27 @@ export default function FuelPricePage() {
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !sinceDate && "text-muted-foreground"
+                        !startDate && "text-muted-foreground"
                       )}
                     >
-                      {sinceDate ? format(sinceDate, "PPP") : <span>Select date</span>}
+                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={sinceDate}
-                      onSelect={setSinceDate}
+                      selected={startDate}
+                      onSelect={(date) => date && setStartDate(date)}
                       initialFocus
-                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>
               </div>
 
+              {/* End Date Picker */}
               <div>
-                <label htmlFor="effectiveDate" className="block text-sm font-medium mb-1">
-                  Price Effective Upto <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium mb-1">
+                  End Date (Optional)
                 </label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -501,20 +429,30 @@ export default function FuelPricePage() {
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !effectiveUpto && "text-muted-foreground"
+                        !endDate && "text-muted-foreground"
                       )}
                     >
-                      {effectiveUpto ? format(effectiveUpto, "PPP") : <span>Select date</span>}
+                      {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={effectiveUpto}
-                      onSelect={setEffectiveUpto}
+                      selected={endDate || undefined}
+                      onSelect={setEndDate}
                       initialFocus
-                      className="pointer-events-auto"
                     />
+                    {endDate && (
+                      <div className="p-2 border-t">
+                        <Button
+                          variant="ghost"
+                          className="w-full"
+                          onClick={() => setEndDate(null)}
+                        >
+                          Clear date
+                        </Button>
+                      </div>
+                    )}
                   </PopoverContent>
                 </Popover>
               </div>
@@ -524,7 +462,7 @@ export default function FuelPricePage() {
                   type="submit"
                   className="bg-green-500 hover:bg-green-600 text-white"
                 >
-                  {isEditMode ? "Update Fuel Price" : "Add Fuel Price"}
+                  {isEditMode ? "Update" : "Create"} Fuel Price
                 </Button>
               </div>
             </div>
@@ -532,8 +470,8 @@ export default function FuelPricePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete by type confirmation dialog */}
-      <Dialog open={deleteTypeDialog.open} onOpenChange={(open) => setDeleteTypeDialog(prev => ({...prev, open}))}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteTypeDialog.open} onOpenChange={(open) => setDeleteTypeDialog({...deleteTypeDialog, open})}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-medium text-red-500 flex items-center">
@@ -542,13 +480,12 @@ export default function FuelPricePage() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-gray-700">
-            Are you sure you want to delete ALL price entries for <span className="font-semibold">{deleteTypeDialog.fuelType}</span>?
-            This action cannot be undone.
+            Are you sure you want to delete all prices for <span className="font-semibold">{deleteTypeDialog.fuelType}</span>?
           </p>
           <div className="flex justify-end space-x-4 mt-4">
             <Button
               variant="outline"
-              onClick={() => setDeleteTypeDialog(prev => ({...prev, open: false}))}
+              onClick={() => setDeleteTypeDialog({...deleteTypeDialog, open: false})}
             >
               Cancel
             </Button>
@@ -556,7 +493,7 @@ export default function FuelPricePage() {
               variant="destructive"
               onClick={executeDeleteByType}
             >
-              Delete All
+              Delete
             </Button>
           </div>
         </DialogContent>

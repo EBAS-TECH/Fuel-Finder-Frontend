@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Edit, Trash2, Search, Plus } from "lucide-react";
+import { Edit, Trash2, Search, Plus, AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,12 @@ interface Delegate {
   displayId: number;
 }
 
+interface DeleteDialogState {
+  open: boolean;
+  delegateId: string | null;
+  delegateName: string;
+}
+
 export default function DelegatesPage() {
   const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,6 +35,11 @@ export default function DelegatesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDelegate, setSelectedDelegate] = useState<Delegate | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+    open: false,
+    delegateId: null,
+    delegateName: "",
+  });
 
   // Form states
   const [newDelegate, setNewDelegate] = useState({
@@ -42,7 +53,7 @@ export default function DelegatesPage() {
   // Fetch delegates on component mount and when dialog closes
   useEffect(() => {
     fetchDelegates();
-  }, [isDialogOpen]);
+  }, [isDialogOpen, deleteDialog.open]);
 
   const fetchDelegates = async () => {
     setIsLoading(true);
@@ -180,12 +191,21 @@ export default function DelegatesPage() {
     }
   };
 
-  const handleDeleteDelegate = async (id: string) => {
-    setIsLoading(true);
+  const handleDeleteClick = (delegate: Delegate) => {
+    setDeleteDialog({
+      open: true,
+      delegateId: delegate.id,
+      delegateName: `${delegate.first_name} ${delegate.last_name}`,
+    });
+  };
 
+  const confirmDeleteDelegate = async () => {
+    if (!deleteDialog.delegateId) return;
+    
+    setIsLoading(true);
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const response = await fetch(`http://localhost:5001/api/user/${id}`, {
+      const response = await fetch(`http://localhost:5001/api/user/${deleteDialog.delegateId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -211,6 +231,11 @@ export default function DelegatesPage() {
       });
     } finally {
       setIsLoading(false);
+      setDeleteDialog({
+        open: false,
+        delegateId: null,
+        delegateName: "",
+      });
     }
   };
 
@@ -426,6 +451,38 @@ export default function DelegatesPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({...prev, open}))}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-medium text-red-500 flex items-center">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Confirm Deletion
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-gray-700">
+              Are you sure you want to delete delegate <span className="font-semibold">{deleteDialog.delegateName}</span>?
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialog(prev => ({...prev, open: false}))}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteDelegate}
+                disabled={isLoading}
+              >
+                {isLoading ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="bg-white rounded-lg overflow-hidden">
           <table className="w-full border-collapse">
             <thead>
@@ -491,7 +548,7 @@ export default function DelegatesPage() {
                         </button>
                         <button
                           className="p-1.5 bg-red-100 rounded-md hover:bg-red-200"
-                          onClick={() => handleDeleteDelegate(delegate.id)}
+                          onClick={() => handleDeleteClick(delegate)}
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </button>
@@ -567,44 +624,6 @@ const DelegateIcon = (props: any) => {
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-};
-
-const ArrowLeft = (props: any) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  );
-};
-
-const ArrowRight = (props: any) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m9 18 6-6-6-6" />
     </svg>
   );
 };

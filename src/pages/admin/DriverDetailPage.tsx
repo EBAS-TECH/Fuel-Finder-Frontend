@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import gasStationImage from '@/assets/gas-stations.png'; // Corrected import path
 
 interface User {
   id: string;
@@ -37,7 +38,7 @@ interface Feedback {
 
 interface Station {
   id: string;
-  name: string;
+  en_name: string;
   logo: string;
   address: string;
   city: string;
@@ -59,9 +60,8 @@ export default function DriverDetailPage() {
   const [sort, setSort] = useState("newest");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [starFilter, setStarFilter] = useState<number | null>(null);
-  const itemsPerPage = 4;
+  const itemsPerPage = 3;
 
-  // Get auth token from storage
   const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
   useEffect(() => {
@@ -69,31 +69,24 @@ export default function DriverDetailPage() {
       try {
         setLoading(true);
         
-        // Fetch driver details
         const driverResponse = await fetch(`http://localhost:5001/api/user/${id}`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
         });
-        if (!driverResponse.ok) {
-          throw new Error("Failed to fetch driver details");
-        }
+        if (!driverResponse.ok) throw new Error("Failed to fetch driver details");
         const driverData = await driverResponse.json();
         setDriver(driverData.data);
         
-        // Fetch feedbacks for this user
         const feedbackResponse = await fetch(`http://localhost:5001/api/feedback/user/${id}`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
         });
-        if (!feedbackResponse.ok) {
-          throw new Error("Failed to fetch feedbacks");
-        }
+        if (!feedbackResponse.ok) throw new Error("Failed to fetch feedbacks");
         const feedbackData = await feedbackResponse.json();
         setFeedbacks(feedbackData.data);
         
-        // Fetch station details for each feedback
         const stationsData: Record<string, Station> = {};
         
         await Promise.all(feedbackData.data.map(async (feedback: Feedback) => {
@@ -108,7 +101,7 @@ export default function DriverDetailPage() {
               const stationData = await stationResponse.json();
               stationsData[feedback.station_id] = {
                 id: feedback.station_id,
-                name: stationData.data.name,
+                en_name: stationData.data.en_name,
                 logo: stationData.data.logo,
                 address: stationData.data.address,
                 city: stationData.data.city,
@@ -138,7 +131,6 @@ export default function DriverDetailPage() {
     fetchData();
   }, [id, authToken, toast]);
 
-  // Update star filter when filter changes
   useEffect(() => {
     if (filter.includes("star")) {
       setStarFilter(parseInt(filter.split("-")[0]));
@@ -147,47 +139,30 @@ export default function DriverDetailPage() {
     }
   }, [filter]);
 
-  // Filter and sort feedbacks
   const filteredFeedbacks = feedbacks.filter(feedback => {
-    // Filter by star rating if selected
-    if (starFilter !== null && feedback.rating !== starFilter) {
-      return false;
-    }
+    if (starFilter !== null && feedback.rating !== starFilter) return false;
     
-    // Filter by date range if selected
     if (dateRange?.from || dateRange?.to) {
       const feedbackDate = new Date(feedback.created_at);
-      if (dateRange.from && feedbackDate < dateRange.from) {
-        return false;
-      }
-      if (dateRange.to && feedbackDate > dateRange.to) {
-        return false;
-      }
+      if (dateRange.from && feedbackDate < dateRange.from) return false;
+      if (dateRange.to && feedbackDate > dateRange.to) return false;
     }
     
     return true;
   }).sort((a, b) => {
-    // Sort by criteria
-    if (sort === "newest") {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    } else if (sort === "oldest") {
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    } else if (sort === "highest") {
-      return b.rating - a.rating;
-    } else if (sort === "lowest") {
-      return a.rating - b.rating;
-    }
+    if (sort === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sort === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (sort === "highest") return b.rating - a.rating;
+    if (sort === "lowest") return a.rating - b.rating;
     return 0;
   });
 
-  // Pagination
   const totalPages = Math.ceil(filteredFeedbacks.length / itemsPerPage);
   const paginatedFeedbacks = filteredFeedbacks.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Render star ratings
   const renderStars = (rating: number) => {
     return Array(5).fill(0).map((_, index) => (
       <Star 
@@ -197,17 +172,9 @@ export default function DriverDetailPage() {
     ));
   };
 
-  if (loading) {
-    return <div className="p-6">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="p-6 text-red-500">Error: {error}</div>;
-  }
-
-  if (!driver) {
-    return <div className="p-6">Driver not found</div>;
-  }
+  if (loading) return <div className="p-6">Loading...</div>;
+  if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
+  if (!driver) return <div className="p-6">Driver not found</div>;
 
   return (
     <div>
@@ -226,7 +193,6 @@ export default function DriverDetailPage() {
         </Link>
         
         <div className="grid grid-cols-12 gap-6">
-          {/* Driver Profile Card */}
           <div className="col-span-12 md:col-span-4 bg-white p-6 rounded-lg flex flex-col items-center">
             <div className="w-32 h-32 rounded-full border-4 border-emerald-100 mb-5 overflow-hidden">
               <img 
@@ -244,7 +210,6 @@ export default function DriverDetailPage() {
             <p className="text-gray-500 mt-2 capitalize">{driver.role.toLowerCase().replace('_', ' ')}</p>
           </div>
           
-          {/* Feedback Section */}
           <div className="col-span-12 md:col-span-8">
             <div className="bg-white rounded-lg p-6">
               <div className="flex justify-between items-center mb-5">
@@ -343,19 +308,15 @@ export default function DriverDetailPage() {
                         
                         {station && (
                           <div className="flex justify-end items-center gap-3 bg-gray-50 p-2 rounded-lg">
-                            <div className="w-10 h-10 rounded-full overflow-hidden">
+                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200">
                               <img 
-                                src={station.logo}
-                                alt={station.name}
+                                src={gasStationImage} 
+                                alt={station.en_name}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
-                                }}
                               />
                             </div>
                             <div className="text-right">
-                              <h5 className="text-sm font-medium">{station.name}</h5>
-                              <p className="text-xs text-gray-500">{station.address}, {station.city}</p>
+                              <h5 className="text-sm font-medium">{station.en_name}</h5>
                               <div className="flex items-center gap-1 justify-end mt-1">
                                 <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md flex items-center">
                                   <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-0.5" />
@@ -375,7 +336,6 @@ export default function DriverDetailPage() {
                 )}
               </div>
               
-              {/* Enhanced Pagination */}
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6">
                   <div className="text-sm text-gray-500">
@@ -385,94 +345,33 @@ export default function DriverDetailPage() {
                   
                   <div className="flex items-center gap-2">
                     <button 
-                      className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                    >
-                      First
-                    </button>
-                    
-                    <button 
                       className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" 
-                      onClick={() => setCurrentPage(currentPage - 1)}
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                     
-                    {/* Show limited page numbers with ellipsis */}
-                    {totalPages <= 5 ? (
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button 
-                          key={page}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            currentPage === page 
-                              ? "bg-emerald-500 text-white" 
-                              : "bg-gray-200 text-gray-600"
-                          }`}
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </button>
-                      ))
-                    ) : (
-                      <>
-                        {currentPage > 2 && (
-                          <button 
-                            className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 text-gray-600"
-                            onClick={() => setCurrentPage(1)}
-                          >
-                            1
-                          </button>
-                        )}
-                        
-                        {currentPage > 3 && <span className="mx-1">...</span>}
-                        
-                        {[
-                          currentPage - 1,
-                          currentPage,
-                          currentPage + 1
-                        ].filter(page => page > 0 && page <= totalPages).map((page) => (
-                          <button 
-                            key={page}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              currentPage === page 
-                                ? "bg-emerald-500 text-white" 
-                                : "bg-gray-200 text-gray-600"
-                            }`}
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                        
-                        {currentPage < totalPages - 2 && <span className="mx-1">...</span>}
-                        
-                        {currentPage < totalPages - 1 && (
-                          <button 
-                            className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 text-gray-600"
-                            onClick={() => setCurrentPage(totalPages)}
-                          >
-                            {totalPages}
-                          </button>
-                        )}
-                      </>
-                    )}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          currentPage === page 
+                            ? "bg-emerald-500 text-white" 
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    ))}
                     
                     <button 
                       className="p-1.5 rounded-full bg-gray-200 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" 
-                      onClick={() => setCurrentPage(currentPage + 1)}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
                     >
                       <ChevronRight className="h-4 w-4" />
-                    </button>
-                    
-                    <button 
-                      className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Last
                     </button>
                   </div>
                 </div>

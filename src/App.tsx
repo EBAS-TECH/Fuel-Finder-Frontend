@@ -17,7 +17,7 @@ import GasStationWaiting from "./pages/gasstation/GasStationWaiting";
 import Profile from "./pages/gasstation/Profile";
 import FuelAvailability from "./pages/gasstation/FuelAvailability";
 import Feedbacks from "./pages/gasstation/Feedbacks";
-import DeligatesPage from "./pages/admin/DeligatesPage";
+import DelegatesPage from "./pages/admin/DeligatesPage";
 import DriverDetailPage from "./pages/admin/DriverDetailPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 import AdminLayout from "./pages/admin/Layout";
@@ -47,10 +47,7 @@ const App = () => (
 
           {/* Gas Station Routes */}
           <Route path="/gas-station">
-            {/* Waiting approval route - accessible when station is not approved */}
             <Route path="waiting" element={<GasStationWaiting />} />
-
-            {/* Protected dashboard routes - only accessible when station is approved */}
             <Route element={<GasStationDashboardLayout />}>
               <Route path="dashboard" element={<GasStationHome />} />
               <Route path="profile" element={<Profile />} />
@@ -58,10 +55,12 @@ const App = () => (
               <Route path="feedbacks" element={<Feedbacks />} />
             </Route>
           </Route>
+
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<DashboardPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="delegates" element={<DeligatesPage />} />
+            <Route path="delegates" element={<DelegatesPage />} />
             <Route path="drivers" element={<DriversPage />} />
             <Route path="drivers/:id" element={<DriverDetailPage />} />
             <Route path="stations" element={<StationsPage />} />
