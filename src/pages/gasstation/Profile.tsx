@@ -33,6 +33,11 @@ const Profile = () => {
     newPassword: false,
     confirmPassword: false,
   });
+  const [validationErrors, setValidationErrors] = useState({
+    first_name: "",
+    last_name: "",
+    username: ""
+  });
 
   // Helper function to get auth headers
   const getAuthHeaders = () => {
@@ -94,25 +99,11 @@ const Profile = () => {
     fetchStationData();
   }, [navigate, toast]);
 
-  // Listen for user update events from other components
-  useEffect(() => {
-    // Define the event handler
-    const handleUserUpdated = () => {
-      fetchStationData();
-    };
-
-    // Add event listener
-    window.addEventListener("userUpdated", handleUserUpdated);
-
-    // Clean up
-    return () => {
-      window.removeEventListener("userUpdated", handleUserUpdated);
-    };
-  }, []);
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditedUser(prev => ({ ...prev, [name]: value }));
+    // Clear validation error when user types
+    setValidationErrors(prev => ({ ...prev, [name]: "" }));
   };
 
   const handlePasswordChange = (e) => {
@@ -127,7 +118,40 @@ const Profile = () => {
     }));
   };
 
-  const handleSave = async () => {
+  const validateForm = () => {
+    const errors = {};
+    let isValid = true;
+
+    if (!editedUser.first_name.trim()) {
+      errors.first_name = "Please enter your first name";
+      isValid = false;
+    }
+
+    if (!editedUser.last_name.trim()) {
+      errors.last_name = "Please enter your last name";
+      isValid = false;
+    }
+
+    if (!editedUser.username.trim()) {
+      errors.username = "Please enter your username";
+      isValid = false;
+    }
+
+    setValidationErrors(errors);
+    return isValid;
+  };
+
+  const handleSave = async (e) => {
+    // Prevent default form submission behavior
+    if (e) {
+      e.preventDefault();
+    }
+
+    // Validate form first
+    if (!validateForm()) {
+      return;
+    }
+
     // Check if any changes have been made
     const isChanged =
       editedUser.first_name !== originalUser.first_name ||
@@ -136,7 +160,7 @@ const Profile = () => {
 
     if (!isChanged) {
       toast({
-        title: "No Changes",
+        title: "No Changes Detected",
         description: "Please make changes to your profile before saving.",
         variant: "destructive",
       });
@@ -165,7 +189,12 @@ const Profile = () => {
       // Update the station state with new user data
       setStation(prev => ({
         ...prev,
-        user: data
+        user: {
+          ...prev.user,
+          first_name: editedUser.first_name,
+          last_name: editedUser.last_name,
+          username: editedUser.username
+        }
       }));
 
       // Update user data in storage
@@ -181,9 +210,6 @@ const Profile = () => {
 
       storage.setItem("userData", JSON.stringify(updatedUser));
 
-      // Dispatch event to notify other components
-      window.dispatchEvent(new CustomEvent("userUpdated"));
-
       toast({
         title: "Success",
         description: "Profile updated successfully",
@@ -193,7 +219,7 @@ const Profile = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "An error occurred while updating the profile. Please try again later.",
         variant: "destructive",
       });
     }
@@ -322,28 +348,6 @@ const Profile = () => {
 
           {/* Station Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Email Field */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">Email</p>
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm">{station.user?.email}</span>
-              </div>
-            </div>
-
-            {/* Phone Field */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">Phone number</p>
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <span className="text-sm">{station.user?.phone}</span>
-              </div>
-            </div>
-
             {/* TIN Number Field */}
             <div className="space-y-1">
               <p className="text-xs text-gray-500">TIN Number</p>
@@ -510,9 +514,9 @@ const Profile = () => {
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={(e) => handleSave(e)}>
             <div className="space-y-2">
-              <label htmlFor="first_name" className="text-sm font-medium text-gray-700 block">First Name</label>
+              <label htmlFor="first_name" className="text-sm font-medium text-gray-700 block">First Name<span className="text-red-500">*</span></label>
               <Input
                 id="first_name"
                 name="first_name"
@@ -520,9 +524,12 @@ const Profile = () => {
                 onChange={handleInputChange}
                 className="w-full"
               />
+              {validationErrors.first_name && (
+                <p className="text-red-500 text-xs">{validationErrors.first_name}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <label htmlFor="last_name" className="text-sm font-medium text-gray-700 block">Last Name</label>
+              <label htmlFor="last_name" className="text-sm font-medium text-gray-700 block">Last Name<span className="text-red-500">*</span></label>
               <Input
                 id="last_name"
                 name="last_name"
@@ -530,9 +537,12 @@ const Profile = () => {
                 onChange={handleInputChange}
                 className="w-full"
               />
+              {validationErrors.last_name && (
+                <p className="text-red-500 text-xs">{validationErrors.last_name}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium text-gray-700 block">Username</label>
+              <label htmlFor="username" className="text-sm font-medium text-gray-700 block">Username<span className="text-red-500">*</span></label>
               <Input
                 id="username"
                 name="username"
@@ -540,6 +550,9 @@ const Profile = () => {
                 onChange={handleInputChange}
                 className="w-full"
               />
+              {validationErrors.username && (
+                <p className="text-red-500 text-xs">{validationErrors.username}</p>
+              )}
             </div>
             <div className="flex justify-end space-x-2">
               <Button
@@ -551,10 +564,10 @@ const Profile = () => {
                 Cancel
               </Button>
               <Button
+                type="submit"
                 variant="outline"
                 size="sm"
                 className="text-fuelGreen-500 border-fuelGreen-500"
-                onClick={handleSave}
               >
                 Save
               </Button>
