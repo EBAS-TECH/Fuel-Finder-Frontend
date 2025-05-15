@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -18,13 +17,24 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronDown } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+
+interface FuelAvailability {
+  id: string;
+  station_id: string;
+  fuel_type: string;
+  up_time: string;
+  down_time: string | null;
+  available: boolean;
+  availability_duration: string | null;
+  available_hrs?: string;
+}
 
 const FuelAvailability = () => {
   const { toast } = useToast();
-  const [fuels, setFuels] = useState([]);
-  const [filteredFuels, setFilteredFuels] = useState([]);
+  const [fuels, setFuels] = useState<FuelAvailability[]>([]);
+  const [filteredFuels, setFilteredFuels] = useState<FuelAvailability[]>([]);
   const [page, setPage] = useState(1);
   const [fuelAvailability, setFuelAvailability] = useState({
     diesel: false,
@@ -34,15 +44,19 @@ const FuelAvailability = () => {
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [selectedFuel, setSelectedFuel] = useState("all");
   const [stationId, setStationId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Fetch station ID
   useEffect(() => {
     const fetchStationId = async () => {
       try {
-        const token =
-          localStorage.getItem("authToken") ||
-          sessionStorage.getItem("authToken");
+        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
         const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+        
+        if (!token || !userId) {
+          throw new Error("Authentication credentials not found");
+        }
+
         const response = await fetch(
           `http://localhost:5001/api/station/user/${userId}`,
           {
@@ -53,7 +67,8 @@ const FuelAvailability = () => {
         );
 
         if (!response.ok) {
-          throw new Error("Failed to fetch station details");
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to fetch station details");
         }
 
         const data = await response.json();
@@ -68,117 +83,166 @@ const FuelAvailability = () => {
     };
 
     fetchStationId();
-  }, []);
+  }, [toast]);
 
   // Fetch fuel availability data
-  useEffect(() => {
+  const fetchFuelAvailability = async () => {
     if (!stationId) return;
 
-    const fetchFuelAvailability = async () => {
-      try {
-        const token =
-          localStorage.getItem("authToken") ||
-          sessionStorage.getItem("authToken");
-        const response = await fetch(
-          `http://localhost:5001/api/availability/station/${stationId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch fuel availability data");
-        }
-
-        const data = await response.json();
-        const fuelsWithHours = data.data.map((fuel) => ({
-          ...fuel,
-          available_hrs: (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2),
-        }));
-        setFuels(fuelsWithHours);
-        setFilteredFuels(fuelsWithHours);
-
-        // Update fuel availability status
-        const initialAvailability = {
-          diesel: false,
-          petrol: false,
-        };
-        data.data.forEach((fuel) => {
-          initialAvailability[fuel.fuel_type.toLowerCase()] = fuel.available;
-        });
-        setFuelAvailability(initialAvailability);
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchFuelAvailability();
-  }, [stationId]);
-
-  const toggleFuel = async (key) => {
+    setIsLoading(true);
     try {
-      const token =
-        localStorage.getItem("authToken") ||
-        sessionStorage.getItem("authToken");
-      
-      const fuelType = key.toUpperCase();
-      const endpoint = fuelAvailability[key] 
-        ? `http://localhost:5001/api/availability/${stationId}`
-        : `http://localhost:5001/api/availability/isAvailable/${stationId}`;
-      
-      const method = fuelAvailability[key] ? "DELETE" : "PUT";
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
 
-      const response = await fetch(endpoint, {
-        method: method,
+      const response = await fetch(
+        `http://localhost:5001/api/availability/station/${stationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to fetch fuel availability data");
+      }
+
+      const data = await response.json();
+      
+      if (!data.data) {
+        throw new Error("Invalid data structure from API");
+      }
+
+      // Process the data to keep only the most recent record for each fuel type
+      const latestRecords = data.data.reduce((acc: FuelAvailability[], current: FuelAvailability) => {
+        const existingIndex = acc.findIndex(item => item.fuel_type === current.fuel_type);
+        if (existingIndex === -1) {
+          acc.push(current);
+        } else {
+          // Replace if current record is more recent
+          if (new Date(current.up_time) > new Date(acc[existingIndex].up_time)) {
+            acc[existingIndex] = current;
+          }
+        }
+        return acc;
+      }, []);
+
+      const fuelsWithHours = latestRecords.map((fuel: FuelAvailability) => ({
+        ...fuel,
+        available_hrs: fuel.availability_duration
+          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+          : "0.00",
+      }));
+
+      setFuels(fuelsWithHours);
+      setFilteredFuels(fuelsWithHours);
+
+      // Update current fuel status
+      const currentStatus = {
+        diesel: fuelsWithHours.some(f => f.fuel_type === "DIESEL" && f.available),
+        petrol: fuelsWithHours.some(f => f.fuel_type === "PETROL" && f.available),
+      };
+      setFuelAvailability(currentStatus);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFuelAvailability();
+  }, [stationId, toast]);
+
+  const toggleFuel = async (fuelType: string) => {
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch("http://localhost:5001/api/availability", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          fuel_type: fuelType
+          station_id: stationId,
+          fuel_type: fuelType.toUpperCase(),
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update fuel availability");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update fuel availability");
       }
 
       const data = await response.json();
-      setFuelAvailability((prev) => ({
+      
+      // Update the local state to modify the existing record
+      setFuels(prevFuels => {
+        const existingIndex = prevFuels.findIndex(
+          f => f.fuel_type === fuelType.toUpperCase()
+        );
+
+        if (existingIndex >= 0) {
+          const updatedFuels = [...prevFuels];
+          updatedFuels[existingIndex] = {
+            ...updatedFuels[existingIndex],
+            available: data.data.available,
+            down_time: data.data.down_time,
+            availability_duration: data.data.availability_duration,
+            available_hrs: data.data.availability_duration
+              ? (parseFloat(data.data.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+              : "0.00",
+          };
+          return updatedFuels;
+        }
+        return prevFuels;
+      });
+
+      // Also update filtered fuels if needed
+      setFilteredFuels(prev => {
+        const existingIndex = prev.findIndex(
+          f => f.fuel_type === fuelType.toUpperCase()
+        );
+
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            available: data.data.available,
+            down_time: data.data.down_time,
+            availability_duration: data.data.availability_duration,
+            available_hrs: data.data.availability_duration
+              ? (parseFloat(data.data.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+              : "0.00",
+          };
+          return updated;
+        }
+        return prev;
+      });
+
+      // Update the toggle status
+      setFuelAvailability(prev => ({
         ...prev,
-        [key]: !prev[key as keyof typeof prev],
+        [fuelType.toLowerCase()]: data.data.available,
       }));
 
       toast({
         title: "Success",
         description: data.message,
       });
-
-      // Refresh the data after toggling
-      const refreshResponse = await fetch(
-        `http://localhost:5001/api/availability/station/${stationId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        const fuelsWithHours = refreshData.data.map((fuel) => ({
-          ...fuel,
-          available_hrs: (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2),
-        }));
-        setFuels(fuelsWithHours);
-        setFilteredFuels(fuelsWithHours);
-      }
     } catch (error) {
       toast({
         title: "Error",
@@ -190,9 +254,11 @@ const FuelAvailability = () => {
 
   const filterFuelAvailability = async () => {
     try {
-      const token =
-        localStorage.getItem("authToken") ||
-        sessionStorage.getItem("authToken");
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
       const response = await fetch(
         "http://localhost:5001/api/availability/duration",
         {
@@ -202,6 +268,7 @@ const FuelAvailability = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            station_id: stationId,
             start_date: startDate ? format(startDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
             end_date: endDate ? format(endDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
           }),
@@ -209,21 +276,39 @@ const FuelAvailability = () => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to filter fuel availability data");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to filter fuel availability");
       }
 
       const data = await response.json();
-      const filteredData = data.data.map((fuel) => ({
+      
+      // Process to keep only the most recent record per fuel type
+      const latestRecords = data.data.reduce((acc: FuelAvailability[], current: FuelAvailability) => {
+        const existingIndex = acc.findIndex(item => item.fuel_type === current.fuel_type);
+        if (existingIndex === -1) {
+          acc.push(current);
+        } else {
+          if (new Date(current.up_time) > new Date(acc[existingIndex].up_time)) {
+            acc[existingIndex] = current;
+          }
+        }
+        return acc;
+      }, []);
+
+      let filteredData = latestRecords.map((fuel: FuelAvailability) => ({
         ...fuel,
-        available_hrs: (parseFloat(fuel.total_milliseconds) / (1000 * 60 * 60)).toFixed(2),
+        available_hrs: fuel.availability_duration
+          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+          : "0.00",
       }));
 
-      let result = filteredData;
       if (selectedFuel !== "all") {
-        result = filteredData.filter((fuel) => fuel.fuel_type.toLowerCase() === selectedFuel);
+        filteredData = filteredData.filter(
+          (fuel) => fuel.fuel_type.toLowerCase() === selectedFuel.toLowerCase()
+        );
       }
 
-      setFilteredFuels(result);
+      setFilteredFuels(filteredData);
     } catch (error) {
       toast({
         title: "Error",
@@ -237,7 +322,9 @@ const FuelAvailability = () => {
     if (selectedFuel === "all") {
       setFilteredFuels(fuels);
     } else {
-      setFilteredFuels(fuels.filter((fuel) => fuel.fuel_type.toLowerCase() === selectedFuel));
+      setFilteredFuels(
+        fuels.filter((fuel) => fuel.fuel_type.toLowerCase() === selectedFuel.toLowerCase())
+      );
     }
   }, [selectedFuel, fuels]);
 
@@ -291,11 +378,12 @@ const FuelAvailability = () => {
                 Fuel Availability
               </h2>
               <div className="flex flex-wrap gap-2">
-                {/* Fuel Type Dropdown */}
                 <Select value={selectedFuel} onValueChange={setSelectedFuel}>
                   <SelectTrigger className="w-[150px] bg-white">
                     <SelectValue placeholder="Fuel Type">
-                      {selectedFuel ? selectedFuel.charAt(0).toUpperCase() + selectedFuel.slice(1) : "Fuel Type"}
+                      {selectedFuel === "all" 
+                        ? "All Fuel Types" 
+                        : selectedFuel.charAt(0).toUpperCase() + selectedFuel.slice(1)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -305,7 +393,6 @@ const FuelAvailability = () => {
                   </SelectContent>
                 </Select>
 
-                {/* Start Date Picker */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -330,7 +417,6 @@ const FuelAvailability = () => {
                   </PopoverContent>
                 </Popover>
 
-                {/* End Date Picker */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -374,30 +460,42 @@ const FuelAvailability = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFuels.map((fuel, index) => (
-                    <tr
-                      key={fuel.id}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      <td className="py-3 px-4">{index + 1}</td>
-                      <td className="py-3 px-4 font-medium">
-                        {fuel.fuel_type}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center">
+                        Loading...
                       </td>
-                      <td className="py-3 px-4">{fuel.up_time}</td>
-                      <td className="py-3 px-4">
-                        {fuel.down_time || "N/A"}
-                      </td>
-                      <td className="py-3 px-4">
-                        {fuel.available_hrs ? (
+                    </tr>
+                  ) : filteredFuels.length > 0 ? (
+                    filteredFuels.map((fuel, index) => (
+                      <tr
+                        key={fuel.id}
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="py-3 px-4">{index + 1}</td>
+                        <td className="py-3 px-4 font-medium">
+                          {fuel.fuel_type}
+                        </td>
+                        <td className="py-3 px-4">
+                          {fuel.up_time ? format(new Date(fuel.up_time), "dd MMM yyyy HH:mm") : "N/A"}
+                        </td>
+                        <td className="py-3 px-4">
+                          {fuel.down_time ? format(new Date(fuel.down_time), "dd MMM yyyy HH:mm") : "N/A"}
+                        </td>
+                        <td className="py-3 px-4">
                           <span className="text-fuelGreen-600 font-medium">
                             {fuel.available_hrs}
                           </span>
-                        ) : (
-                          "N/A"
-                        )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-4 text-center text-gray-500">
+                        No fuel availability records found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

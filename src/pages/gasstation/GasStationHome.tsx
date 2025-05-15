@@ -1,254 +1,433 @@
-
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Star,
+  Fuel,
+  MessageSquare,
+  Zap,
+  AlertCircle,
+  TrendingUp,
+  Clock,
+  Gauge,
+  CircleDollarSign,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
   Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
 
-// Mock data for charts
-const fuelSalesData = [
-  { name: "Jan", diesel: 400, gasoline: 240 },
-  { name: "Feb", diesel: 300, gasoline: 290 },
-  { name: "Mar", diesel: 500, gasoline: 320 },
-  { name: "Apr", diesel: 280, gasoline: 220 },
-  { name: "May", diesel: 590, gasoline: 360 },
-  { name: "Jun", diesel: 490, gasoline: 290 },
-  { name: "Jul", diesel: 380, gasoline: 300 },
-];
-
-const dailyTrafficData = [
-  { hour: '6AM', traffic: 40 },
-  { hour: '8AM', traffic: 120 },
-  { hour: '10AM', traffic: 80 },
-  { hour: '12PM', traffic: 100 },
-  { hour: '2PM', traffic: 60 },
-  { hour: '4PM', traffic: 90 },
-  { hour: '6PM', traffic: 140 },
-  { hour: '8PM', traffic: 70 },
-  { hour: '10PM', traffic: 30 },
-];
-
-const GasStationHome = () => {
-  const [metrics] = useState({
-    totalSales: "$24,345",
-    salesGrowth: "+12.5%",
-    customers: "1,234",
-    customerGrowth: "+5.3%",
-    fuelVolume: "12,450 L",
-    volumeGrowth: "-2.1%",
-    feedback: "4.7",
-    totalFeedbacks: 156,
-  });
-
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <Card className="p-6">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Sales</p>
-              <h3 className="text-2xl font-bold">{metrics.totalSales}</h3>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-fuelGreen-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <p className={`text-sm mt-2 ${metrics.salesGrowth.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-            {metrics.salesGrowth} from last month
-          </p>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Customers</p>
-              <h3 className="text-2xl font-bold">{metrics.customers}</h3>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            </div>
-          </div>
-          <p className={`text-sm mt-2 ${metrics.customerGrowth.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-            {metrics.customerGrowth} from last month
-          </p>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Fuel Volume</p>
-              <h3 className="text-2xl font-bold">{metrics.fuelVolume}</h3>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-          </div>
-          <p className={`text-sm mt-2 ${metrics.volumeGrowth.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-            {metrics.volumeGrowth} from last month
-          </p>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Feedback Rating</p>
-              <h3 className="text-2xl font-bold">{metrics.feedback}</h3>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-sm mt-2 text-gray-500">
-            Based on {metrics.totalFeedbacks} feedbacks
-          </p>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card className="p-6">
-          <h2 className="text-lg font-medium mb-4">Monthly Fuel Sales</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={fuelSalesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="diesel" 
-                  stroke="#16a34a" 
-                  strokeWidth={2} 
-                  name="Diesel" 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="gasoline" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2} 
-                  name="Gasoline" 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-lg font-medium mb-4">Daily Traffic Pattern</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyTrafficData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="traffic" fill="#16a34a" name="Customer Traffic" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="p-6 lg:col-span-2">
-          <h2 className="text-lg font-medium mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, index) => (
-              <div key={index} className="flex items-start space-x-4">
-                <div className="h-10 w-10 rounded-full bg-fuelGreen-100 flex-shrink-0 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Fuel stock updated</p>
-                  <p className="text-xs text-gray-500">Diesel: 5000L added to inventory</p>
-                  <p className="text-xs text-gray-400 mt-1">2 hours ago</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-lg font-medium mb-4">Fuel Availability</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-sm">Diesel</span>
-              </div>
-              <span className="text-sm font-medium">Available</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-amber-500 rounded-full mr-2"></div>
-                <span className="text-sm">Gasoline</span>
-              </div>
-              <span className="text-sm font-medium">Low Stock</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                <span className="text-sm">Premium</span>
-              </div>
-              <span className="text-sm font-medium">Out of Stock</span>
-            </div>
-            
-            <div className="border-t pt-4 mt-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm">Diesel</span>
-                <span className="text-sm font-medium">75%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: "75%" }}></div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm">Gasoline</span>
-                <span className="text-sm font-medium">25%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: "25%" }}></div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm">Premium</span>
-                <span className="text-sm font-medium">0%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-red-500 h-2 rounded-full" style={{ width: "0%" }}></div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
+// Color palette
+const COLORS = {
+  primary: "#8B5CF6", // purple
+  success: "#10B981", // emerald
+  warning: "#F59E0B", // amber
+  danger: "#EF4444", // red
+  info: "#3B82F6", // blue
+  lightBlue: "#93C5FD", // light blue
+  dark: "#1F2937", // gray-800
 };
 
-export default GasStationHome;
+// Define static fuel types and their colors
+const staticFuelTypes = [
+  { id: 1, name: "Petrol", color: COLORS.primary },
+  { id: 2, name: "Diesel", color: COLORS.lightBlue },
+];
+
+export default function DashboardPage() {
+  const [feedbackData, setFeedbackData] = useState(null);
+  const [fuelAvailability, setFuelAvailability] = useState([]);
+  const [stationId, setStationId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
+      const userId =
+        localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
+      if (!token || !userId) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // First, fetch the station ID for this user
+        const stationResponse = await fetch(
+          `http://localhost:5001/api/station/user/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const stationData = await stationResponse.json();
+
+        if (!stationData.data?.id) {
+          throw new Error("No station found for this user");
+        }
+
+        setStationId(stationData.data.id);
+
+        // Fetch feedback data
+        const feedbackResponse = await fetch(
+          "http://localhost:5001/api/feedback/rate",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const feedbackData = await feedbackResponse.json();
+        setFeedbackData({
+          ...feedbackData.data,
+          average_rate: parseFloat(feedbackData.data.average_rate).toFixed(0),
+        });
+
+        // Use static fuel types instead of fetching from API
+        const staticFuelData = staticFuelTypes.map((fuel) => ({
+          fuel_type: fuel.name,
+          availability_duration: Math.floor(Math.random() * 10 + 5), // Random duration for demo
+          status: Math.random() > 0.5 ? "AVAILABLE" : "LOW", // Random status for demo
+        }));
+
+        setFuelAvailability(staticFuelData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [navigate]);
+
+  // Prepare data for charts
+  const pieChartData = fuelAvailability.map((item) => ({
+    name: item.fuel_type,
+    value: item.availability_duration,
+    color: staticFuelTypes.find((fuel) => fuel.name === item.fuel_type)?.color || COLORS.primary,
+  }));
+
+  // Alternative chart data - Fuel availability by status
+  const statusData = [
+    {
+      name: "Available",
+      value: fuelAvailability.filter((f) => f.status === "AVAILABLE").length,
+    },
+    {
+      name: "Low Stock",
+      value: fuelAvailability.filter((f) => f.status === "LOW").length,
+    },
+  ];
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Station Dashboard
+          </h1>
+          <p className="text-gray-600">
+            Welcome back! Here's your station overview
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-emerald-100 px-3 py-1.5 rounded-full">
+          <Zap className="h-5 w-5 text-emerald-600" />
+          <span className="font-medium text-emerald-700">Live Data</span>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        </div>
+      ) : (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Rating Card */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-medium text-purple-800">
+                    Average Rating
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-purple-200">
+                    <Star className="h-5 w-5 text-purple-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-purple-900 mb-2">
+                  {feedbackData?.average_rate || "0"}
+                  <span className="text-lg text-purple-600">/5</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {feedbackData?.average_rate > 3 ? (
+                    <>
+                      <TrendingUp className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-700">
+                        Good performance
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm text-amber-700">
+                        Needs improvement
+                      </span>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter className="pt-0">
+                <CardDescription className="text-purple-700">
+                  Based on {feedbackData?.total || 0} customer reviews
+                </CardDescription>
+              </CardFooter>
+            </Card>
+
+            {/* Feedback Card */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-medium text-blue-800">
+                    Customer Feedback
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-blue-200">
+                    <MessageSquare className="h-5 w-5 text-blue-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-blue-900 mb-2">
+                  {feedbackData?.total || "0"}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          ((feedbackData?.total || 0) / 50) * 100
+                        )}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <span className="text-xs text-blue-700">
+                    {Math.min(100, ((feedbackData?.total || 0) / 50) * 100)}%
+                  </span>
+                </div>
+              </CardContent>
+              <CardFooter className="pt-0">
+                <CardDescription className="text-blue-700">
+                  Engagements this month
+                </CardDescription>
+              </CardFooter>
+            </Card>
+
+            {/* Fuel Card */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-medium text-emerald-800">
+                    Fuel Types
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-emerald-200">
+                    <Fuel className="h-5 w-5 text-emerald-600" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-emerald-900 mb-2">
+                  {fuelAvailability.length || "0"}
+                </div>
+                <div className="flex gap-2">
+                  {fuelAvailability.map((fuel, index) => (
+                    <span
+                      key={index}
+                      className="text-xs px-2 py-1 rounded-full"
+                      style={{
+                        backgroundColor: `${fuel.color}20`,
+                        color: fuel.color,
+                      }}
+                    >
+                      {fuel.fuel_type}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+              <CardFooter className="pt-0">
+                <CardDescription className="text-emerald-700">
+                  Currently available in stock
+                </CardDescription>
+              </CardFooter>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Fuel Availability Line Chart */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-gray-800">
+                  Fuel Availability Duration
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  Hours of availability per fuel type
+                  <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                    <Clock className="inline h-3 w-3 mr-1" />
+                    Last 24 hours
+                  </span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={fuelAvailability}>
+                      <defs>
+                        <linearGradient
+                          id="colorDuration"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor={COLORS.success}
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor={COLORS.success}
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis dataKey="fuel_type" tick={{ fill: "#6B7280" }} />
+                      <YAxis
+                        tick={{ fill: "#6B7280" }}
+                        label={{
+                          value: "Hours",
+                          angle: -90,
+                          position: "insideLeft",
+                          fill: "#6B7280",
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#FFF",
+                          borderColor: "#E5E7EB",
+                          borderRadius: "0.5rem",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                        formatter={(value) => [
+                          `${value} hours`,
+                          "Availability",
+                        ]}
+                      />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey="availability_duration"
+                        name="Availability (Hours)"
+                        stroke={COLORS.success}
+                        fillOpacity={1}
+                        fill="url(#colorDuration)"
+                        strokeWidth={2}
+                        activeDot={{ r: 6, fill: COLORS.success }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Fuel Availability Pie Chart */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-gray-800">
+                  Fuel Distribution
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  Fuel types by availability
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    <Gauge className="inline h-3 w-3 mr-1" />
+                    Percentage
+                  </span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                      >
+                        {pieChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => [
+                          `${value} hours`,
+                          "Availability",
+                        ]}
+                        contentStyle={{
+                          backgroundColor: "#FFF",
+                          borderColor: "#E5E7EB",
+                          borderRadius: "0.5rem",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
