@@ -26,6 +26,10 @@ import StationsPage from "./pages/admin/StationsPage";
 import StationDetailPage from "./pages/admin/StationDetailPage";
 import ProfilePage from "./pages/admin/ProfilePage";
 import FuelPricePage from "./pages/admin/FuelPricePage";
+import DelegateStationDetailPage from "./pages/ministrydeligate/StationDetailPage";
+import DeligatedashboardLayout from "./pages/ministrydeligate/DeligatedashboardLayout";
+import DelegateStationsPage from "./pages/ministrydeligate/StationsPage";
+import DelegateProfilePage from "./pages/ministrydeligate/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +73,18 @@ const App = () => (
             <Route path="profile" element={<ProfilePage />} />
           </Route>
 
+          <Route
+            path="/ministry-delegate"
+            element={<DeligatedashboardLayout />}
+          >
+            <Route index element={<DelegateStationsPage />} />
+            <Route path="profile" element={<DelegateProfilePage />} />
+            <Route path="stations" element={<DelegateStationsPage />} />
+            <Route
+              path="stations/:id"
+              element={<DelegateStationDetailPage />}
+            />
+          </Route>
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
         </Routes>

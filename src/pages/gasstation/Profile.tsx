@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Edit, Eye, EyeOff, User, Mail, Phone, MapPin, FileText, Navigation } from "lucide-react";
 import gasStationsImage from "@/assets/gas-stations.png";
 
 const Profile = () => {
@@ -14,11 +15,6 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editedUser, setEditedUser] = useState({
-    first_name: "",
-    last_name: "",
-    username: "",
-  });
-  const [originalUser, setOriginalUser] = useState({
     first_name: "",
     last_name: "",
     username: "",
@@ -33,7 +29,7 @@ const Profile = () => {
     newPassword: false,
     confirmPassword: false,
   });
-  const [validationErrors, setValidationErrors] = useState({
+  const [errors, setErrors] = useState({
     first_name: "",
     last_name: "",
     username: ""
@@ -77,11 +73,6 @@ const Profile = () => {
           last_name: data.user?.last_name || "",
           username: data.user?.username || "",
         });
-        setOriginalUser({
-          first_name: data.user?.first_name || "",
-          last_name: data.user?.last_name || "",
-          username: data.user?.username || "",
-        });
       }
     } catch (error) {
       toast({
@@ -99,11 +90,26 @@ const Profile = () => {
     fetchStationData();
   }, [navigate, toast]);
 
+  // Listen for user update events from other components
+  useEffect(() => {
+    const handleUserUpdated = () => {
+      fetchStationData();
+    };
+
+    window.addEventListener("userUpdated", handleUserUpdated);
+    return () => {
+      window.removeEventListener("userUpdated", handleUserUpdated);
+    };
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditedUser(prev => ({ ...prev, [name]: value }));
-    // Clear validation error when user types
-    setValidationErrors(prev => ({ ...prev, [name]: "" }));
+    
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handlePasswordChange = (e) => {
@@ -119,51 +125,37 @@ const Profile = () => {
   };
 
   const validateForm = () => {
-    const errors = {};
-    let isValid = true;
+    let valid = true;
+    const newErrors = {
+      first_name: "",
+      last_name: "",
+      username: ""
+    };
 
     if (!editedUser.first_name.trim()) {
-      errors.first_name = "Please enter your first name";
-      isValid = false;
+      newErrors.first_name = "First name is required";
+      valid = false;
     }
 
     if (!editedUser.last_name.trim()) {
-      errors.last_name = "Please enter your last name";
-      isValid = false;
+      newErrors.last_name = "Last name is required";
+      valid = false;
     }
 
     if (!editedUser.username.trim()) {
-      errors.username = "Please enter your username";
-      isValid = false;
+      newErrors.username = "Username is required";
+      valid = false;
+    } else if (editedUser.username.length < 3) {
+      newErrors.username = "Username must be at least 3 characters";
+      valid = false;
     }
 
-    setValidationErrors(errors);
-    return isValid;
+    setErrors(newErrors);
+    return valid;
   };
 
-  const handleSave = async (e) => {
-    // Prevent default form submission behavior
-    if (e) {
-      e.preventDefault();
-    }
-
-    // Validate form first
+  const handleSave = async () => {
     if (!validateForm()) {
-      return;
-    }
-
-    // Check if any changes have been made
-    const isChanged =
-      editedUser.first_name !== originalUser.first_name ||
-      editedUser.last_name !== originalUser.last_name ||
-      editedUser.username !== originalUser.username;
-
-    if (!isChanged) {
-      toast({
-        title: "No Changes Detected",
-        description: "Please make changes to your profile before saving.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -189,12 +181,7 @@ const Profile = () => {
       // Update the station state with new user data
       setStation(prev => ({
         ...prev,
-        user: {
-          ...prev.user,
-          first_name: editedUser.first_name,
-          last_name: editedUser.last_name,
-          username: editedUser.username
-        }
+        user: data
       }));
 
       // Update user data in storage
@@ -210,6 +197,9 @@ const Profile = () => {
 
       storage.setItem("userData", JSON.stringify(updatedUser));
 
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent("userUpdated"));
+
       toast({
         title: "Success",
         description: "Profile updated successfully",
@@ -219,7 +209,7 @@ const Profile = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "An error occurred while updating the profile. Please try again later.",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -274,14 +264,10 @@ const Profile = () => {
     }
   };
 
-  const handleEditClick = () => {
-    setIsEditDialogOpen(true);
-  };
-
   if (loading) {
     return (
-      <div className="p-6 flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-fuelGreen-500"></div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
       </div>
     );
   }
@@ -298,283 +284,285 @@ const Profile = () => {
   }
 
   return (
-    <div className="p-6">
-      {/* Header Section */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <svg className="w-6 h-6 text-fuelGreen-500 inline-block mr-2" viewBox="0 0 24 24" fill="none">
-            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <h1 className="text-xl font-semibold text-fuelGreen-500 inline-block">Profile</h1>
-          <p className="text-gray-500 ml-8">Profile Management</p>
+    <div>
+      <div className="flex items-center mb-5">
+        <div className="flex items-center text-emerald-500">
+          <User className="h-6 w-6 mr-2" />
+          <h1 className="text-xl font-medium">Profile</h1>
         </div>
-        {station.status === "VERIFIED" && (
-          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
-            Verified
-          </span>
-        )}
+        <p className="text-gray-400 text-sm ml-2">Profile management</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Station Profile Card */}
-        <Card className="p-6 relative">
-          <Button
-            variant="outline"
-            size="sm"
-            className="absolute right-6 top-6 text-fuelGreen-500 border-fuelGreen-500"
-            onClick={handleEditClick}
-          >
-            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Edit
-          </Button>
-
-          {/* Profile Picture Section */}
-          <div className="flex flex-col items-center mb-6">
-            <div className="relative mb-4">
-              <img
-                src={gasStationsImage}
-                alt="Station logo"
-                className="w-24 h-24 rounded-full object-cover border-4 border-fuelGreen-100"
-              />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Profile Display & Edit Section */}
+        <div className="bg-[#F1F7F7] p-6 rounded-lg">
+          <div className="bg-white rounded-lg p-6">
+            <div className="flex justify-end mb-2">
+              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="border-emerald-500 text-emerald-500 hover:bg-emerald-50"
+                  >
+                    <Edit className="h-4 w-4 mr-2" /> Edit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit Profile</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          htmlFor="first_name"
+                          className="text-sm font-medium mb-1 block"
+                        >
+                          First Name *
+                        </label>
+                        <Input
+                          id="first_name"
+                          name="first_name"
+                          value={editedUser.first_name}
+                          onChange={handleInputChange}
+                          required
+                          className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
+                        />
+                        {errors.first_name && (
+                          <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="last_name"
+                          className="text-sm font-medium mb-1 block"
+                        >
+                          Last Name *
+                        </label>
+                        <Input
+                          id="last_name"
+                          name="last_name"
+                          value={editedUser.last_name}
+                          onChange={handleInputChange}
+                          required
+                          className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
+                        />
+                        {errors.last_name && (
+                          <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="username"
+                        className="text-sm font-medium mb-1 block"
+                      >
+                        Username *
+                      </label>
+                      <Input
+                        id="username"
+                        name="username"
+                        value={editedUser.username}
+                        onChange={handleInputChange}
+                        required
+                        className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
+                      />
+                      {errors.username && (
+                        <p className="text-red-500 text-xs mt-1">{errors.username}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                      onClick={handleSave}
+                    >
+                      Save changes
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
-            {/* Station Name */}
-            <h2 className="text-xl font-bold text-center">{station.en_name}</h2>
-            <p className="text-sm text-gray-500 mt-1">{station.am_name}</p>
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
+                <img
+                  src={gasStationsImage}
+                  alt="Station logo"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <h2 className="text-xl font-medium mb-1">{station.en_name}</h2>
+              <p className="text-gray-500 mb-1">{station.am_name}</p>
+              {station.status === "VERIFIED" && (
+                <p className="text-emerald-500 mt-2 px-3 py-1 bg-emerald-100 rounded-full text-sm">
+                  Verified
+                </p>
+              )}
+            </div>
+
+            {/* Station Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Email Field */}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Email</p>
+                <div className="flex items-center">
+                  <Mail className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm">{station.user?.email}</span>
+                </div>
+              </div>
+
+              {/* Phone Field */}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Phone number</p>
+                <div className="flex items-center">
+                  <Phone className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm">{station.user?.phone}</span>
+                </div>
+              </div>
+
+              {/* TIN Number Field */}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">TIN Number</p>
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm">{station.tin_number}</span>
+                </div>
+              </div>
+
+              {/* Address Field */}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Address</p>
+                <div className="flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm">{station.address}</span>
+                </div>
+              </div>
+
+              {/* Latitude Field */}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Latitude</p>
+                <div className="flex items-center">
+                  <Navigation className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm">{station.latitude}</span>
+                </div>
+              </div>
+
+              {/* Longitude Field */}
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500">Longitude</p>
+                <div className="flex items-center">
+                  <Navigation className="w-5 h-5 mr-2 text-emerald-500" />
+                  <span className="text-sm">{station.longitude}</span>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
 
-          {/* Station Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* TIN Number Field */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">TIN Number</p>
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-sm">{station.tin_number}</span>
-              </div>
-            </div>
+        {/* Change Password Section */}
+        <div className="bg-[#F1F7F7] p-6 rounded-lg">
+          <div className="bg-white rounded-lg p-6">
+            <h3 className="text-lg font-medium mb-4">Change Password</h3>
 
-            {/* Address Field */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">Address</p>
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="text-sm">{station.address}</span>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="oldPassword"
+                  className="text-sm font-medium mb-1 block"
+                >
+                  Old Password*
+                </label>
+                <div className="relative">
+                  <Input
+                    id="oldPassword"
+                    type={showPassword.oldPassword ? "text" : "password"}
+                    placeholder="Enter your old password"
+                    value={passwordData.oldPassword}
+                    onChange={handlePasswordChange}
+                    name="oldPassword"
+                    required
+                    className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => togglePasswordVisibility("oldPassword")}
+                  >
+                    {showPassword.oldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Latitude Field */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">Latitude</p>
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-                <span className="text-sm">{station.latitude}</span>
+              <div>
+                <label
+                  htmlFor="newPassword"
+                  className="text-sm font-medium mb-1 block"
+                >
+                  New Password*
+                </label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showPassword.newPassword ? "text" : "password"}
+                    placeholder="Enter your new password"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    name="newPassword"
+                    required
+                    className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => togglePasswordVisibility("newPassword")}
+                  >
+                    {showPassword.newPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Longitude Field */}
-            <div className="space-y-1">
-              <p className="text-xs text-gray-500">Longitude</p>
-              <div className="flex items-center">
-                <svg className="w-5 h-5 mr-2 text-fuelGreen-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-                <span className="text-sm">{station.longitude}</span>
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="text-sm font-medium mb-1 block"
+                >
+                  Confirm New Password*
+                </label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword.confirmPassword ? "text" : "password"}
+                    placeholder="Confirm your new password"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    name="confirmPassword"
+                    required
+                    className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300 pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => togglePasswordVisibility("confirmPassword")}
+                  >
+                    {showPassword.confirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
+
+              <div className="flex justify-center mt-6">
+                <Button
+                  type="submit"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white w-full"
+                >
+                  Update Password
+                </Button>
+              </div>
+            </form>
           </div>
-        </Card>
-
-        {/* Password Change Card */}
-        <Card className="p-6">
-          <h2 className="text-lg font-medium mb-6">Change Password</h2>
-          <form className="space-y-4" onSubmit={handlePasswordSubmit}>
-            <div className="space-y-2">
-              <label htmlFor="old-password" className="text-sm font-medium text-gray-700 block">Old Password<span className="text-red-500">*</span></label>
-              <div className="relative">
-                <Input
-                  type={showPassword.oldPassword ? "text" : "password"}
-                  id="old-password"
-                  name="oldPassword"
-                  value={passwordData.oldPassword}
-                  onChange={handlePasswordChange}
-                  placeholder="Enter your old password"
-                  className="w-full"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePasswordVisibility("oldPassword")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword.oldPassword ? (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="new-password" className="text-sm font-medium text-gray-700 block">New Password<span className="text-red-500">*</span></label>
-              <div className="relative">
-                <Input
-                  type={showPassword.newPassword ? "text" : "password"}
-                  id="new-password"
-                  name="newPassword"
-                  value={passwordData.newPassword}
-                  onChange={handlePasswordChange}
-                  placeholder="Enter your new password"
-                  className="w-full"
-                  required
-                  minLength={8}
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePasswordVisibility("newPassword")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword.newPassword ? (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="confirm-password" className="text-sm font-medium text-gray-700 block">Confirm New Password<span className="text-red-500">*</span></label>
-              <div className="relative">
-                <Input
-                  type={showPassword.confirmPassword ? "text" : "password"}
-                  id="confirm-password"
-                  name="confirmPassword"
-                  value={passwordData.confirmPassword}
-                  onChange={handlePasswordChange}
-                  placeholder="Confirm your new password"
-                  className="w-full"
-                  required
-                  minLength={8}
-                />
-                <button
-                  type="button"
-                  onClick={() => togglePasswordVisibility("confirmPassword")}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword.confirmPassword ? (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-fuelGreen-500 hover:bg-fuelGreen-600 mt-4"
-              disabled={!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword}
-            >
-              Update Password
-            </Button>
-          </form>
-        </Card>
+        </div>
       </div>
-
-      {/* Dialog for Editing User Profile */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Profile</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={(e) => handleSave(e)}>
-            <div className="space-y-2">
-              <label htmlFor="first_name" className="text-sm font-medium text-gray-700 block">First Name<span className="text-red-500">*</span></label>
-              <Input
-                id="first_name"
-                name="first_name"
-                value={editedUser.first_name}
-                onChange={handleInputChange}
-                className="w-full"
-              />
-              {validationErrors.first_name && (
-                <p className="text-red-500 text-xs">{validationErrors.first_name}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="last_name" className="text-sm font-medium text-gray-700 block">Last Name<span className="text-red-500">*</span></label>
-              <Input
-                id="last_name"
-                name="last_name"
-                value={editedUser.last_name}
-                onChange={handleInputChange}
-                className="w-full"
-              />
-              {validationErrors.last_name && (
-                <p className="text-red-500 text-xs">{validationErrors.last_name}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium text-gray-700 block">Username<span className="text-red-500">*</span></label>
-              <Input
-                id="username"
-                name="username"
-                value={editedUser.username}
-                onChange={handleInputChange}
-                className="w-full"
-              />
-              {validationErrors.username && (
-                <p className="text-red-500 text-xs">{validationErrors.username}</p>
-              )}
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-red-500 border-red-500"
-                onClick={() => setIsEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                className="text-fuelGreen-500 border-fuelGreen-500"
-              >
-                Save
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
