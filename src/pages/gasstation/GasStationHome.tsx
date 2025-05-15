@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Clock,
   Gauge,
-  CircleDollarSign,
 } from "lucide-react";
 import {
   Card,
@@ -22,8 +21,6 @@ import {
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -33,13 +30,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  AreaChart,
-  Area,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
 } from "recharts";
 
 // Color palette
@@ -53,11 +43,11 @@ const COLORS = {
   dark: "#1F2937", // gray-800
 };
 
-// Define static fuel types and their colors
-const staticFuelTypes = [
-  { id: 1, name: "Petrol", color: COLORS.primary },
-  { id: 2, name: "Diesel", color: COLORS.lightBlue },
-];
+// Define fuel types and their colors
+const fuelTypeColors = {
+  PETROL: COLORS.primary,
+  DIESEL: COLORS.lightBlue,
+};
 
 export default function DashboardPage() {
   const [feedbackData, setFeedbackData] = useState(null);
@@ -107,17 +97,31 @@ export default function DashboardPage() {
         const feedbackData = await feedbackResponse.json();
         setFeedbackData({
           ...feedbackData.data,
-          average_rate: parseFloat(feedbackData.data.average_rate).toFixed(0),
+          average_rate: parseFloat(feedbackData.data.average_rate).toFixed(1),
         });
 
-        // Use static fuel types instead of fetching from API
-        const staticFuelData = staticFuelTypes.map((fuel) => ({
-          fuel_type: fuel.name,
-          availability_duration: Math.floor(Math.random() * 10 + 5), // Random duration for demo
-          status: Math.random() > 0.5 ? "AVAILABLE" : "LOW", // Random status for demo
-        }));
+        // Fetch fuel availability data
+        const availabilityResponse = await fetch(
+          `http://localhost:5001/api/availability/station/${stationData.data.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const availabilityData = await availabilityResponse.json();
 
-        setFuelAvailability(staticFuelData);
+        // Process availability data - only include available fuels
+        const processedAvailability = availabilityData.data
+          .filter((item) => item.available) // Only include available fuels
+          .map((item) => ({
+            fuel_type: item.fuel_type,
+            availability_duration: Math.floor(
+              parseFloat(item.availability_duration) / 3600
+            ), // Convert seconds to hours
+            available: item.available,
+            color: fuelTypeColors[item.fuel_type] || COLORS.primary,
+          }));
+
+        setFuelAvailability(processedAvailability);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -128,24 +132,19 @@ export default function DashboardPage() {
     fetchData();
   }, [navigate]);
 
-  // Prepare data for charts
-  const pieChartData = fuelAvailability.map((item) => ({
+  // Prepare data for line chart - only available fuels
+  const lineChartData = fuelAvailability.map((item) => ({
     name: item.fuel_type,
-    value: item.availability_duration,
-    color: staticFuelTypes.find((fuel) => fuel.name === item.fuel_type)?.color || COLORS.primary,
+    hours: item.availability_duration,
+    color: item.color,
   }));
 
-  // Alternative chart data - Fuel availability by status
-  const statusData = [
-    {
-      name: "Available",
-      value: fuelAvailability.filter((f) => f.status === "AVAILABLE").length,
-    },
-    {
-      name: "Low Stock",
-      value: fuelAvailability.filter((f) => f.status === "LOW").length,
-    },
-  ];
+  // Prepare data for pie chart - only available fuels
+  const pieChartData = fuelAvailability.map((item) => ({
+    name: item.fuel_type,
+    value: 1, // Each available fuel counts as 1
+    color: item.color,
+  }));
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -154,9 +153,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-800">
             Station Dashboard
           </h1>
-          <p className="text-gray-600">
-            Welcome back! Here's your station overview
-          </p>
+          <p className="text-gray-600">Here's your station overview</p>
         </div>
         <div className="flex items-center gap-2 bg-emerald-100 px-3 py-1.5 rounded-full">
           <Zap className="h-5 w-5 text-emerald-600" />
@@ -259,7 +256,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-sm font-medium text-emerald-800">
-                    Fuel Types
+                    Available Fuel Types
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-emerald-200">
                     <Fuel className="h-5 w-5 text-emerald-600" />
@@ -270,7 +267,7 @@ export default function DashboardPage() {
                 <div className="text-4xl font-bold text-emerald-900 mb-2">
                   {fuelAvailability.length || "0"}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {fuelAvailability.map((fuel, index) => (
                     <span
                       key={index}
@@ -287,145 +284,142 @@ export default function DashboardPage() {
               </CardContent>
               <CardFooter className="pt-0">
                 <CardDescription className="text-emerald-700">
-                  Currently available in stock
+                  Currently available in station
                 </CardDescription>
               </CardFooter>
             </Card>
           </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Fuel Availability Line Chart */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-gray-800">
-                  Fuel Availability Duration
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Hours of availability per fuel type
-                  <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                    <Clock className="inline h-3 w-3 mr-1" />
-                    Last 24 hours
-                  </span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={fuelAvailability}>
-                      <defs>
-                        <linearGradient
-                          id="colorDuration"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor={COLORS.success}
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor={COLORS.success}
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis dataKey="fuel_type" tick={{ fill: "#6B7280" }} />
-                      <YAxis
-                        tick={{ fill: "#6B7280" }}
-                        label={{
-                          value: "Hours",
-                          angle: -90,
-                          position: "insideLeft",
-                          fill: "#6B7280",
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#FFF",
-                          borderColor: "#E5E7EB",
-                          borderRadius: "0.5rem",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        }}
-                        formatter={(value) => [
-                          `${value} hours`,
-                          "Availability",
-                        ]}
-                      />
-                      <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="availability_duration"
-                        name="Availability (Hours)"
-                        stroke={COLORS.success}
-                        fillOpacity={1}
-                        fill="url(#colorDuration)"
-                        strokeWidth={2}
-                        activeDot={{ r: 6, fill: COLORS.success }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Fuel Availability Pie Chart */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-gray-800">
-                  Fuel Distribution
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Fuel types by availability
-                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    <Gauge className="inline h-3 w-3 mr-1" />
-                    Percentage
-                  </span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) =>
-                          `${name}: ${(percent * 100).toFixed(0)}%`
-                        }
+          {/* Charts Section - Only shown if there's available fuel */}
+          {fuelAvailability.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Fuel Availability Line Chart */}
+              <Card className="border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-gray-800">
+                    Fuel Availability Duration
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Hours of availability for available fuel types
+                    <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                      <Clock className="inline h-3 w-3 mr-1" />
+                      Current Status
+                    </span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={lineChartData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
-                        {pieChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value) => [
-                          `${value} hours`,
-                          "Availability",
-                        ]}
-                        contentStyle={{
-                          backgroundColor: "#FFF",
-                          borderColor: "#E5E7EB",
-                          borderRadius: "0.5rem",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="name" tick={{ fill: "#6B7280" }} />
+                        <YAxis
+                          tick={{ fill: "#6B7280" }}
+                          label={{
+                            value: "Hours",
+                            angle: -90,
+                            position: "insideLeft",
+                            fill: "#6B7280",
+                          }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#FFF",
+                            borderColor: "#E5E7EB",
+                            borderRadius: "0.5rem",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                          formatter={(value) => [
+                            `${value} hours`,
+                            "Availability",
+                          ]}
+                        />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="hours"
+                          name="Availability (Hours)"
+                          stroke={COLORS.primary}
+                          strokeWidth={2}
+                          activeDot={{ r: 6 }}
+                          dot={{ r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Fuel Distribution Pie Chart */}
+              <Card className="border-0 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-gray-800">
+                    Fuel Distribution
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Available fuel types in station
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      <Gauge className="inline h-3 w-3 mr-1" />
+                      Current stock
+                    </span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name}: ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => [
+                            `${value} fuel type${value !== 1 ? "s" : ""}`,
+                            "Available",
+                          ]}
+                          contentStyle={{
+                            backgroundColor: "#FFF",
+                            borderColor: "#E5E7EB",
+                            borderRadius: "0.5rem",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-gray-800">
+                  No Fuel Currently Available
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  There are currently no available fuel types in your station.
                 </div>
               </CardContent>
             </Card>
-          </div>
+          )}
         </>
       )}
     </div>

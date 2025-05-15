@@ -1,71 +1,88 @@
-import React, { useState, useEffect } from "react";
-import { Eye, Trash2, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Eye } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format, differenceInHours } from "date-fns";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
-interface Station {
-  id: string;
-  en_name: string;
-  am_name: string;
-  tin_number: string;
-  user_id: string;
-  address: string;
-  availability: boolean;
-  status: "VERIFIED" | "REJECTED" | "PENDING";
-  created_at: string;
-  updated_at: string | null;
-  latitude: number;
-  longitude: number;
+interface StationReport {
+  stationId: string;
+  name: string;
+  tinNumber: string;
+  category: string;
+  reason: string;
+  suggestion: string;
+  rating: number;
+  availaleHour: number;
 }
 
-export default function StationsPage() {
-  const [stations, setStations] = useState<Station[]>([]);
-  const [filteredStations, setFilteredStations] = useState<Station[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"VERIFIED" | "REJECTED" | "PENDING">("VERIFIED");
+const DelegateStationsPage = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stations, setStations] = useState<StationReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [stationToDelete, setStationToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [startDate, setStartDate] = useState<Date>(new Date(new Date().setMonth(new Date().getMonth() - 3)));
+  const [endDate, setEndDate] = useState<Date>(new Date());
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const itemsPerPage = 5;
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const itemsPerPage = 4;
 
-  // Get auth token using localStorage (like in Login component)
-  const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+  // Calculate total hours in the date range
+  const totalHoursInRange = differenceInHours(endDate, startDate);
 
   useEffect(() => {
     const fetchStations = async () => {
       try {
-        setLoading(true);
-        const response = await fetch("http://localhost:5001/api/station/", {
+        const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+        
+        if (!authToken) {
+          throw new Error("No authentication token found");
+        }
+
+        const response = await fetch("http://localhost:5001/api/station/report/ministry", {
+          method: "POST",
           headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
+            "Authorization": `Bearer ${authToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString()
+          })
         });
-        
-        if (!response.ok) throw new Error("Failed to fetch stations");
-        
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch stations");
+        }
+
         const data = await response.json();
         setStations(data.data);
-      } catch (error) {
+      } catch (error: any) {
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : "Failed to load stations",
+          description: error.message,
           variant: "destructive"
         });
       } finally {
@@ -73,327 +90,425 @@ export default function StationsPage() {
       }
     };
 
-    if (authToken) {
-      fetchStations();
-    } else {
-      navigate("/login");
-    }
-  }, [authToken, toast, navigate]);
+    fetchStations();
+  }, [toast, startDate, endDate]);
 
-  useEffect(() => {
-    const filtered = stations
-      .filter(station => station.status === activeTab)
-      .filter(station => {
-        const term = searchTerm.toLowerCase();
-        return (
-          station.en_name.toLowerCase().includes(term) ||
-          station.am_name.toLowerCase().includes(term) ||
-          station.address.toLowerCase().includes(term) ||
-          station.tin_number.toLowerCase().includes(term)
-        );
-      });
+  // Filter stations based on search query and rating filter
+  const filteredStations = stations.filter(station => {
+    const matchesSearch = 
+      station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      station.tinNumber.toLowerCase().includes(searchQuery.toLowerCase());
     
-    setFilteredStations(filtered);
-    setCurrentPage(1);
-  }, [stations, activeTab, searchTerm]);
+    if (ratingFilter === "all") return matchesSearch;
+    
+    const stationRating = Math.floor(station.rating);
+    return matchesSearch && stationRating.toString() === ratingFilter;
+  });
 
+  // Pagination logic
   const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
-  const paginatedStations = filteredStations.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentStations = filteredStations.slice(indexOfFirstItem, indexOfLastItem);
 
-  const handleDeleteClick = (stationId: string) => {
-    setStationToDelete(stationId);
-    setDeleteDialogOpen(true);
+  // Render stars based on rating
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(
+          <span key={i} className="text-yellow-500 fill-current">★</span>
+        );
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(
+          <span key={i} className="text-yellow-500 fill-current">½</span>
+        );
+      } else {
+        stars.push(
+          <span key={i} className="text-gray-300">★</span>
+        );
+      }
+    }
+    
+    return <div className="flex">{stars}</div>;
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!stationToDelete) return;
-
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`http://localhost:5001/api/station/${stationToDelete}`, {
-        method: "DELETE",
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to delete station");
-      }
-
-      // Remove only the deleted station from state
-      setStations(prevStations => prevStations.filter(station => station.id !== stationToDelete));
-      
-      toast({
-        title: "Success",
-        description: "Station deleted successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete station",
-        variant: "destructive"
-      });
-    } finally {
-      setIsDeleting(false);
-      setDeleteDialogOpen(false);
-      setStationToDelete(null);
+  // Render AI summary with appropriate color
+  const renderAISummary = (summary: string) => {
+    switch (summary) {
+      case "Low":
+        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-red-500 mr-2"></span><span className="text-red-500">{summary}</span></div>;
+      case "Medium":
+      case "Average":
+        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-yellow-500 mr-2"></span><span className="text-yellow-500">{summary}</span></div>;
+      case "High":
+        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span><span className="text-green-500">{summary}</span></div>;
+      default:
+        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-gray-500 mr-2"></span><span className="text-gray-500">{summary}</span></div>;
     }
   };
 
-  const handleViewStation = (stationId: string) => {
-    navigate(`/admin/stations/${stationId}`);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleFilter = () => {
+    setCurrentPage(1);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm"
+    });
+    
+    // Add title and header
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setFont("helvetica", "bold");
+    doc.text('Fuel Stations Performance Report', 14, 20);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.setFont("helvetica", "normal");
+    doc.text(`Date Range: ${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`, 14, 27);
+    doc.text(`Total Hours in Range: ${totalHoursInRange} hours`, 14, 34);
+    
+    // Prepare data for the table
+    const tableData = filteredStations.map(station => [
+      station.name,
+      station.tinNumber,
+      station.rating.toFixed(1),
+      Math.floor(station.availaleHour),
+      station.category,
+      station.reason.substring(0, 50) + '...' // Truncated reason
+    ]);
+    
+    // Add table
+    autoTable(doc, {
+      head: [
+        [
+          { content: 'Station Name', styles: { fillColor: [15, 118, 110], textColor: 255 } }, // teal-800
+          { content: 'TIN Number', styles: { fillColor: [15, 118, 110], textColor: 255 } },
+          { content: 'Rating', styles: { fillColor: [15, 118, 110], textColor: 255 } },
+          { content: 'Available Hours', styles: { fillColor: [15, 118, 110], textColor: 255 } },
+          { content: 'AI Summary', styles: { fillColor: [15, 118, 110], textColor: 255 } },
+          { content: 'Reason Summary', styles: { fillColor: [15, 118, 110], textColor: 255 } }
+        ]
+      ],
+      body: tableData,
+      startY: 40,
+      styles: {
+        cellPadding: 3,
+        fontSize: 9,
+        valign: 'middle',
+        halign: 'center',
+        textColor: [15, 23, 42], // slate-900
+        font: "helvetica"
+      },
+      headStyles: {
+        fillColor: [15, 118, 110], // teal-800
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { halign: 'left', cellWidth: 40 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 60, halign: 'left' }
+      },
+      didDrawCell: (data) => {
+        // Color code the AI Summary cells
+        if (data.section === 'body' && data.column.index === 4) {
+          const value = data.cell.raw as string;
+          
+          if (value === 'Low') {
+            doc.setFillColor(239, 68, 68); // red-500
+          } else if (value === 'Medium' || value === 'Average') {
+            doc.setFillColor(234, 179, 8); // yellow-500
+          } else if (value === 'High') {
+            doc.setFillColor(34, 197, 94); // green-500
+          } else {
+            doc.setFillColor(100, 116, 139); // slate-500
+          }
+          
+          // Draw colored circle
+          doc.circle(
+            data.cell.x + 5, 
+            data.cell.y + data.cell.height / 2, 
+            2, 
+            'F'
+          );
+          
+          // Add text
+          doc.setTextColor(15, 23, 42); // slate-900
+          doc.text(
+            value, 
+            data.cell.x + 10, 
+            data.cell.y + data.cell.height / 2 + 2, 
+            { align: 'left', baseline: 'middle' }
+          );
+          
+          return false; // Skip default rendering
+        }
+      },
+      willDrawCell: (data) => {
+        // Add alternating row colors
+        if (data.section === 'body' && data.row.index % 2 === 0) {
+          doc.setFillColor(241, 245, 249); // slate-50
+          doc.rect(
+            data.cell.x,
+            data.cell.y,
+            data.cell.width,
+            data.cell.height,
+            'F'
+          );
+        }
+      }
+    });
+    
+    // Add footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139); // slate-500
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        doc.internal.pageSize.width - 20,
+        doc.internal.pageSize.height - 10,
+        { align: 'right' }
+      );
+      doc.text(
+        `Generated on ${format(new Date(), 'MMM dd, yyyy HH:mm')}`,
+        20,
+        doc.internal.pageSize.height - 10,
+        { align: 'left' }
+      );
+    }
+    
+    // Save the PDF
+    doc.save(`Fuel_Stations_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   if (loading) {
-    return <div className="p-6">Loading stations...</div>;
+    return (
+      <div className="bg-[#F7F9F9] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner border-4 border-green-500 border-t-transparent rounded-full w-12 h-12 animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading stations...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6">
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this station and cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="flex items-center mb-5">
-        <div className="flex items-center text-emerald-500">
-          <svg className="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 9h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 3v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <h1 className="text-xl font-medium">Stations</h1>
-        </div>
-        <p className="text-gray-400 text-sm ml-2">Stations management</p>
+    <div className="bg-[#F7F9F9] min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-gray-800">Stations</h1>
+        <p className="text-sm text-gray-500">View Station Report</p>
       </div>
-
-      <div className="bg-[#F1F7F7] p-6 rounded-lg">
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as "VERIFIED" | "REJECTED" | "PENDING")}
-          className="mb-5"
-        >
-          <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
-            <TabsTrigger
-              value="VERIFIED"
-              className={`bg-white ${
-                activeTab === "VERIFIED" ? "border-emerald-500 text-emerald-500" : "border-transparent"
-              } rounded-lg shadow-sm border`}
-            >
-              Verified
-            </TabsTrigger>
-            <TabsTrigger
-              value="REJECTED"
-              className={`bg-white ${
-                activeTab === "REJECTED" ? "border-emerald-500 text-emerald-500" : "border-transparent"
-              } rounded-lg shadow-sm border`}
-            >
-              Rejected
-            </TabsTrigger>
-            <TabsTrigger
-              value="PENDING"
-              className={`bg-white ${
-                activeTab === "PENDING" ? "border-emerald-500 text-emerald-500" : "border-transparent"
-              } rounded-lg shadow-sm border`}
-            >
-              Pending
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="w-72 relative mb-5">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Search station"
-            className="pl-10 bg-white border-none rounded-full h-10 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-green-500 text-white text-left">
-                <th className="py-4 px-4 w-16">#</th>
-                <th className="py-4 px-4">Station Name</th>
-                <th className="py-4 px-4">TIN Number</th>
-                <th className="py-4 px-4">Address</th>
-                <th className="py-4 px-4">Status</th>
-                <th className="py-4 px-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedStations.length > 0 ? (
-                paginatedStations.map((station, index) => (
-                  <tr key={station.id} className="border-b hover:bg-gray-50">
-                    <td className="py-4 px-4">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gray-100">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M3 9h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
-                            <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
-                            <path d="M12 3v6" />
-                          </svg>
-                        </div>
-                        {station.en_name}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">{station.tin_number}</td>
-                    <td className="py-4 px-4">{station.address}</td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        station.status === "VERIFIED" 
-                          ? "bg-emerald-100 text-emerald-800" 
-                          : station.status === "REJECTED" 
-                            ? "bg-red-100 text-red-800" 
-                            : "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        {station.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex justify-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewStation(station.id)}
-                          className="hover:bg-emerald-100"
-                        >
-                          <Eye className="h-4 w-4 text-emerald-600" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(station.id)}
-                          className="hover:bg-red-100"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">
-                    No stations found matching your criteria
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredStations.length > 0 && (
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * itemsPerPage + 1}-
-              {Math.min(currentPage * itemsPerPage, filteredStations.length)} of {filteredStations.length} stations
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-              </Button>
-
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setCurrentPage(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </Button>
+      
+      <div className="bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
+          <div className="relative w-full md:w-64">
+            <Input 
+              placeholder="Search station" 
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10 bg-[#F2FCE2] border-none rounded-full focus:ring-green-500"
+            />
+            <div className="absolute inset-y-0 left-3 flex items-center">
+              <svg className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
           </div>
-        )}
+          
+          <div className="flex gap-2 flex-wrap">
+            <Select value={ratingFilter} onValueChange={setRatingFilter}>
+              <SelectTrigger className="w-[180px] bg-white border text-gray-700">
+                <SelectValue placeholder="Filter by rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ratings</SelectItem>
+                <SelectItem value="1">1 Star</SelectItem>
+                <SelectItem value="2">2 Stars</SelectItem>
+                <SelectItem value="3">3 Stars</SelectItem>
+                <SelectItem value="4">4 Stars</SelectItem>
+                <SelectItem value="5">5 Stars</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="bg-white border text-gray-700 justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "MMM dd, yyyy") : <span>Start date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => date && setStartDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="bg-white border text-gray-700 justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "MMM dd, yyyy") : <span>End date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(date) => date && setEndDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <Button 
+              className="bg-green-500 hover:bg-green-600 text-white"
+              onClick={handleFilter}
+            >
+              Filter
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="bg-green-500 hover:bg-green-600 text-white"
+              onClick={exportToPDF}
+            >
+              Export PDF
+            </Button>
+          </div>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-green-500">
+              <TableRow>
+                <TableHead className="text-white">ID</TableHead>
+                <TableHead className="text-white">Station Name</TableHead>
+                <TableHead className="text-white">TIN Number</TableHead>
+                <TableHead className="text-white">Rating</TableHead>
+                <TableHead className="text-white">Available Hours</TableHead>
+                <TableHead className="text-white">AI Summary</TableHead>
+                <TableHead className="text-white">Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentStations.length > 0 ? (
+                currentStations.map((station, index) => (
+                  <TableRow key={station.stationId} className="border-b">
+                    <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 rounded-full bg-gray-200 mr-2 overflow-hidden flex items-center justify-center">
+                          {station.name.includes("Total") ? (
+                            <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs">TE</div>
+                          ) : station.name.includes("OLA") ? (
+                            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">OE</div>
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">YM</div>
+                          )}
+                        </div>
+                        {station.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>{station.tinNumber}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        {renderStars(station.rating)}
+                        <span className="text-xs text-gray-500 mt-1">
+                          {station.rating.toFixed(1)} average
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{Math.floor(station.availaleHour)}</TableCell>
+                    <TableCell>
+                      {renderAISummary(station.category)}
+                    </TableCell>
+                    <TableCell>
+                      <Link to={`/delegate/stations/${station.stationId}`}>
+                        <Button variant="ghost" size="sm" className="text-green-500 p-0">
+                          <Eye className="h-5 w-5" />
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    No stations found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        <div className="flex items-center justify-between py-4">
+          <div className="text-sm text-gray-500">
+            Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredStations.length)} of {filteredStations.length}
+          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    onClick={() => handlePageChange(page)}
+                    isActive={page === currentPage}
+                    className={page === currentPage ? "bg-green-500 text-white" : ""}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className={currentPage === totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default DelegateStationsPage;
