@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Eye } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
@@ -46,8 +53,10 @@ const DelegateStationsPage = () => {
   const [startDate, setStartDate] = useState<Date>(new Date(new Date().setMonth(new Date().getMonth() - 3)));
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [filteredStations, setFilteredStations] = useState<StationReport[]>([]);
   const itemsPerPage = 5;
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Calculate total hours in the date range
   const totalHoursInRange = differenceInHours(endDate, startDate);
@@ -56,7 +65,7 @@ const DelegateStationsPage = () => {
     const fetchStations = async () => {
       try {
         const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        
+
         if (!authToken) {
           throw new Error("No authentication token found");
         }
@@ -74,11 +83,13 @@ const DelegateStationsPage = () => {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to fetch stations");
+          const errorData = await response.json();
+          throw new Error(`Failed to fetch stations: ${errorData.message || "Unknown error"}`);
         }
 
         const data = await response.json();
         setStations(data.data);
+        setFilteredStations(data.data); // Initialize filtered stations
       } catch (error: any) {
         toast({
           title: "Error",
@@ -91,19 +102,47 @@ const DelegateStationsPage = () => {
     };
 
     fetchStations();
-  }, [toast, startDate, endDate]);
+  }, [toast]); // Removed dependencies to fetch only on initial load
 
-  // Filter stations based on search query and rating filter
-  const filteredStations = stations.filter(station => {
-    const matchesSearch = 
-      station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      station.tinNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (ratingFilter === "all") return matchesSearch;
-    
-    const stationRating = Math.floor(station.rating);
-    return matchesSearch && stationRating.toString() === ratingFilter;
-  });
+  // Apply filters when filter button is clicked
+  const handleFilter = () => {
+    // Check if the date range is valid
+    if (startDate > endDate) {
+      toast({
+        title: "Invalid Date Range",
+        description: "The start date must be before the end date.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const filtered = stations.filter(station => {
+      const matchesSearch =
+        station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        station.tinNumber.toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (ratingFilter === "all") return matchesSearch;
+
+      const stationRating = Math.floor(station.rating);
+      return matchesSearch && stationRating.toString() === ratingFilter;
+    });
+
+    if (filtered.length === 0) {
+      toast({
+        title: "No Data Found",
+        description: "No stations found for the specified date range.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setFilteredStations(filtered);
+    setCurrentPage(1);
+    toast({
+      title: "Filter Applied",
+      description: `Showing ${filtered.length} stations matching your criteria`,
+    });
+  };
 
   // Pagination logic
   const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
@@ -116,7 +155,7 @@ const DelegateStationsPage = () => {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    
+
     for (let i = 1; i <= 5; i++) {
       if (i <= fullStars) {
         stars.push(
@@ -132,63 +171,64 @@ const DelegateStationsPage = () => {
         );
       }
     }
-    
+
     return <div className="flex">{stars}</div>;
+  };
+
+  // Get color for AI summary
+  const getSummaryColor = (summary: string) => {
+    switch (summary.toLowerCase()) {
+      case "low":
+        return { bg: "bg-red-500", text: "text-red-500" };
+      case "medium":
+      case "average":
+        return { bg: "bg-yellow-500", text: "text-yellow-500" };
+      case "high":
+        return { bg: "bg-green-500", text: "text-green-500" };
+      default:
+        return { bg: "bg-gray-500", text: "text-gray-500" };
+    }
   };
 
   // Render AI summary with appropriate color
   const renderAISummary = (summary: string) => {
-    switch (summary) {
-      case "Low":
-        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-red-500 mr-2"></span><span className="text-red-500">{summary}</span></div>;
-      case "Medium":
-      case "Average":
-        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-yellow-500 mr-2"></span><span className="text-yellow-500">{summary}</span></div>;
-      case "High":
-        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span><span className="text-green-500">{summary}</span></div>;
-      default:
-        return <div className="flex items-center"><span className="h-2 w-2 rounded-full bg-gray-500 mr-2"></span><span className="text-gray-500">{summary}</span></div>;
-    }
+    const color = getSummaryColor(summary);
+    return (
+      <div className="flex items-center">
+        <span className={`h-2 w-2 rounded-full ${color.bg} mr-2`}></span>
+        <span className={color.text}>{summary}</span>
+      </div>
+    );
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleFilter = () => {
-    setCurrentPage(1);
-  };
-
   const exportToPDF = () => {
-    // Create confirmation dialog
-    const confirmed = window.confirm(
-      `Prepare to download:\n\n` +
-      `• File: Fuel_Stations_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf\n` +
-      `• Size: Approximately ${Math.round(filteredStations.length * 0.5)} KB\n` +
-      `• Format: A4 Landscape\n\n` +
-      `Click OK to continue or Cancel to abort.`
-    );
-
-    if (!confirmed) return;
+    toast({
+      title: "Preparing PDF",
+      description: "Generating your report, please wait...",
+    });
 
     const doc = new jsPDF({
       orientation: "landscape",
       unit: "mm",
       format: "a4"
     });
-    
-    // Add title and header with light green theme
+
+    // Add title and header with dark green theme
     doc.setFontSize(18);
-    doc.setTextColor(34, 197, 94); // green-500
+    doc.setTextColor(22, 101, 52); // green-800
     doc.setFont("helvetica", "bold");
     doc.text('Fuel Stations Performance Report', 105, 20, { align: 'center' });
-    
+
     doc.setFontSize(11);
     doc.setTextColor(71, 85, 105); // slate-600
     doc.setFont("helvetica", "normal");
     doc.text(`Date Range: ${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`, 14, 30);
     doc.text(`Total Hours in Range: ${totalHoursInRange} hours`, 14, 37);
-    
+
     // Prepare data for the table
     const tableData = filteredStations.map(station => [
       station.name,
@@ -197,16 +237,16 @@ const DelegateStationsPage = () => {
       Math.floor(station.availaleHour),
       station.category
     ]);
-    
+
     // Add table with light green theme
     autoTable(doc, {
       head: [
         [
-          { content: 'Station Name', styles: { fillColor: [220, 252, 231], textColor: [15, 23, 42] } },
-          { content: 'TIN Number', styles: { fillColor: [220, 252, 231], textColor: [15, 23, 42] } },
-          { content: 'Rating', styles: { fillColor: [220, 252, 231], textColor: [15, 23, 42] } },
-          { content: 'Available Hours', styles: { fillColor: [220, 252, 231], textColor: [15, 23, 42] } },
-          { content: 'AI Summary', styles: { fillColor: [220, 252, 231], textColor: [15, 23, 42] } }
+          { content: 'Station Name', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
+          { content: 'TIN Number', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
+          { content: 'Rating', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } },
+          { content: 'Available Hours', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } },
+          { content: 'AI Summary', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } }
         ]
       ],
       body: tableData,
@@ -215,44 +255,41 @@ const DelegateStationsPage = () => {
         cellPadding: 3,
         fontSize: 9,
         valign: 'middle',
-        halign: 'center',
         textColor: [15, 23, 42],
         font: "helvetica",
         fillColor: [255, 255, 255]
       },
       headStyles: {
-        fillColor: [220, 252, 231],
-        textColor: [15, 23, 42],
+        fillColor: [16, 185, 129], // green-500
+        textColor: [255, 255, 255],
         fontStyle: 'bold'
       },
       columnStyles: {
-        0: { halign: 'left', cellWidth: 40 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 25 }
+        0: { halign: 'left', cellWidth: 50 },
+        1: { halign: 'left', cellWidth: 35 },
+        2: { cellWidth: 20, halign: 'center' },
+        3: { cellWidth: 25, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' }
       },
       didDrawCell: (data) => {
         if (data.section === 'body' && data.column.index === 4) {
           const value = data.cell.raw as string;
-          
-          if (value === 'Low') {
-            doc.setTextColor(239, 68, 68);
-          } else if (value === 'Medium' || value === 'Average') {
-            doc.setTextColor(234, 179, 8);
-          } else if (value === 'High') {
-            doc.setTextColor(34, 197, 94);
-          } else {
-            doc.setTextColor(100, 116, 139);
-          }
-          
+          const color = getSummaryColor(value);
+
+          let rgbColor: [number, number, number] = [100, 116, 139]; // default gray
+          if (color.text === "text-red-500") rgbColor = [239, 68, 68];
+          else if (color.text === "text-yellow-500") rgbColor = [234, 179, 8];
+          else if (color.text === "text-green-500") rgbColor = [34, 197, 94];
+
+          doc.setTextColor(rgbColor[0], rgbColor[1], rgbColor[2]);
+
           doc.text(
-            value, 
-            data.cell.x + data.cell.width / 2, 
-            data.cell.y + data.cell.height / 2 + 2, 
+            value,
+            data.cell.x + data.cell.width / 2,
+            data.cell.y + data.cell.height / 2 + 2,
             { align: 'center', baseline: 'middle' }
           );
-          
+
           return false;
         }
       },
@@ -269,7 +306,7 @@ const DelegateStationsPage = () => {
         }
       }
     });
-    
+
     // Add footer
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -282,10 +319,21 @@ const DelegateStationsPage = () => {
         doc.internal.pageSize.height - 10,
         { align: 'right' }
       );
+      doc.text(
+        `Created on: ${format(new Date(), 'MMM dd, yyyy')}`,
+        20,
+        doc.internal.pageSize.height - 10,
+        { align: 'left' }
+      );
     }
-    
+
     // Save the PDF
     doc.save(`Fuel_Stations_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
+    toast({
+      title: "PDF Downloaded",
+      description: "Your report has been successfully downloaded",
+    });
   };
 
   if (loading) {
@@ -305,17 +353,14 @@ const DelegateStationsPage = () => {
         <h1 className="text-xl font-semibold text-gray-800">Stations</h1>
         <p className="text-sm text-gray-500">View Station Report</p>
       </div>
-      
+
       <div className="bg-white p-4 rounded-lg shadow-sm">
         <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
           <div className="relative w-full md:w-64">
-            <Input 
-              placeholder="Search station" 
+            <Input
+              placeholder="Search station"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 bg-[#F2FCE2] border-none rounded-full focus:ring-green-500"
             />
             <div className="absolute inset-y-0 left-3 flex items-center">
@@ -324,7 +369,7 @@ const DelegateStationsPage = () => {
               </svg>
             </div>
           </div>
-          
+
           <div className="flex gap-2 flex-wrap">
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger className="w-[180px] bg-white border text-gray-700">
@@ -339,7 +384,7 @@ const DelegateStationsPage = () => {
                 <SelectItem value="5">5 Stars</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -359,7 +404,7 @@ const DelegateStationsPage = () => {
                 />
               </PopoverContent>
             </Popover>
-            
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -379,43 +424,42 @@ const DelegateStationsPage = () => {
                 />
               </PopoverContent>
             </Popover>
-            
-            <Button 
+
+            <Button
               className="bg-green-500 hover:bg-green-600 text-white"
               onClick={handleFilter}
             >
               Filter
             </Button>
-            
-            <Button 
-              variant="outline" 
-              className="bg-green-500 hover:bg-green-600 text-white"
+
+            <Button
+              className="bg-green-500 hover:bg-green-500 text-white font-bold"
               onClick={exportToPDF}
             >
               Export PDF
             </Button>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-green-500">
               <TableRow>
-                <TableHead className="text-white">ID</TableHead>
-                <TableHead className="text-white">Station Name</TableHead>
-                <TableHead className="text-white">TIN Number</TableHead>
-                <TableHead className="text-white">Rating</TableHead>
-                <TableHead className="text-white">Available Hours</TableHead>
-                <TableHead className="text-white">AI Summary</TableHead>
-                <TableHead className="text-white">Details</TableHead>
+                <TableHead className="text-white text-left">ID</TableHead>
+                <TableHead className="text-white text-left">Station Name</TableHead>
+                <TableHead className="text-white text-left">TIN Number</TableHead>
+                <TableHead className="text-white text-center">Rating</TableHead>
+                <TableHead className="text-white text-center">Available Hours</TableHead>
+                <TableHead className="text-white text-center">AI Summary</TableHead>
+                <TableHead className="text-white text-left">Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {currentStations.length > 0 ? (
                 currentStations.map((station, index) => (
                   <TableRow key={station.stationId} className="border-b">
-                    <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="text-left">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                    <TableCell className="font-medium text-left">
                       <div className="flex items-center">
                         <div className="w-8 h-8 rounded-full bg-gray-200 mr-2 overflow-hidden flex items-center justify-center">
                           {station.name.includes("Total") ? (
@@ -429,25 +473,28 @@ const DelegateStationsPage = () => {
                         {station.name}
                       </div>
                     </TableCell>
-                    <TableCell>{station.tinNumber}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
+                    <TableCell className="text-left">{station.tinNumber}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex flex-col items-center">
                         {renderStars(station.rating)}
                         <span className="text-xs text-gray-500 mt-1">
                           {station.rating.toFixed(1)} average
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{Math.floor(station.availaleHour)}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">{Math.floor(station.availaleHour)}</TableCell>
+                    <TableCell className="text-center">
                       {renderAISummary(station.category)}
                     </TableCell>
-                    <TableCell>
-                      <Link to={`/delegate/stations/${station.stationId}`}>
-                        <Button variant="ghost" size="sm" className="text-green-500 p-0">
-                          <Eye className="h-5 w-5" />
-                        </Button>
-                      </Link>
+                    <TableCell className="text-left">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-500 p-0"
+                        onClick={() => navigate(`/ministry-delegate/stations/${station.stationId}`)}
+                      >
+                        <Eye className="h-5 w-5" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -461,7 +508,7 @@ const DelegateStationsPage = () => {
             </TableBody>
           </Table>
         </div>
-        
+
         <div className="flex items-center justify-between py-4">
           <div className="text-sm text-gray-500">
             Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredStations.length)} of {filteredStations.length}
@@ -469,13 +516,13 @@ const DelegateStationsPage = () => {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
-              
+
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <PaginationItem key={page}>
                   <PaginationLink
@@ -487,9 +534,9 @@ const DelegateStationsPage = () => {
                   </PaginationLink>
                 </PaginationItem>
               ))}
-              
+
               <PaginationItem>
-                <PaginationNext 
+                <PaginationNext
                   onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   className={currentPage === totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
