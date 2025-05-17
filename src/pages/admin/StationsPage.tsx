@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface Station {
   id: string;
@@ -136,7 +137,7 @@ export default function StationsPage() {
         return;
       }
 
-      const response = await fetch("http://localhost:5001/api/station/", {
+      const response = await fetch(`${API_BASE_URL}/api/station/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -157,7 +158,7 @@ export default function StationsPage() {
       const stationsWithUserDetails = await Promise.all(
         data.data.map(async (station: Station) => {
           const userResponse = await fetch(
-            `http://localhost:5001/api/user/${station.user_id}`,
+            `${API_BASE_URL}/api/user/${station.user_id}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -249,7 +250,7 @@ export default function StationsPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5001/api/station/update/${currentStation.id}`,
+        `${API_BASE_URL}/api/station/update/${currentStation.id}`,
         {
           method: "PUT",
           headers: {
@@ -318,7 +319,7 @@ export default function StationsPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5001/api/station/${stationToDelete.id}`,
+        `${API_BASE_URL}/api/station/${stationToDelete.id}`,
         {
           method: "DELETE",
           headers: {

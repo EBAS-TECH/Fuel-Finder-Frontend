@@ -19,6 +19,7 @@ import {
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface FuelAvailability {
   id: string;
@@ -58,7 +59,7 @@ const FuelAvailability = () => {
         }
 
         const response = await fetch(
-          `http://localhost:5001/api/station/user/${userId}`,
+          `${API_BASE_URL}/api/station/user/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -97,7 +98,7 @@ const FuelAvailability = () => {
       }
 
       const response = await fetch(
-        `http://localhost:5001/api/availability/station/${stationId}`,
+        `${API_BASE_URL}/api/availability/station/${stationId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -170,7 +171,7 @@ const FuelAvailability = () => {
         throw new Error("Authentication token not found");
       }
 
-      const response = await fetch("http://localhost:5001/api/availability", {
+      const response = await fetch(`${API_BASE_URL}/api/availability`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -260,7 +261,7 @@ const FuelAvailability = () => {
       }
 
       const response = await fetch(
-        "http://localhost:5001/api/availability/duration",
+        `${API_BASE_URL}/api/availability/duration`,
         {
           method: "POST",
           headers: {

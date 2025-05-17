@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface User {
   id: number; // Sequential display ID (per page)
@@ -48,7 +49,7 @@ const DriversPage: React.FC = () => {
         throw new Error("Authentication required. Please login again.");
       }
 
-      const response = await fetch("http://localhost:5001/api/user", {
+      const response = await fetch(`${API_BASE_URL}/api/user`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -123,7 +124,7 @@ const DriversPage: React.FC = () => {
         throw new Error("Authentication required");
       }
 
-      const response = await fetch(`http://localhost:5001/api/user/${driverToDelete}`, {
+      const response = await fetch(`${API_BASE_URL}/api/user/${driverToDelete}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,

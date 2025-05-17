@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface Feedback {
   id: string;
@@ -86,7 +87,7 @@ const Feedbacks = () => {
         const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
         // Fetch the station information for this user
-        const stationResponse = await fetch(`http://localhost:5001/api/station/user/${userId}`, {
+        const stationResponse = await fetch(`${API_BASE_URL}/api/station/user/${userId}`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -101,7 +102,7 @@ const Feedbacks = () => {
         setStation(stationData);
 
         // Fetch the rating data for this station
-        const ratingResponse = await fetch(`http://localhost:5001/api/feedback/rate`, {
+        const ratingResponse = await fetch(`${API_BASE_URL}/api/feedback/rate`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -118,7 +119,7 @@ const Feedbacks = () => {
         setAverageRating(parseFloat(ratingResult.data.average_rate).toFixed(1));
 
         // Fetch feedbacks for this station
-        const feedbackResponse = await fetch(`http://localhost:5001/api/feedback/station/${stationData.id}`, {
+        const feedbackResponse = await fetch(`${API_BASE_URL}/api/feedback/station/${stationData.id}`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -133,7 +134,7 @@ const Feedbacks = () => {
         // Fetch user details for each feedback
         const feedbacksWithUserDetails = await Promise.all(
           feedbackResult.data.map(async (feedback: Feedback) => {
-            const userResponse = await fetch(`http://localhost:5001/api/user/${feedback.user_id}`, {
+            const userResponse = await fetch(`${API_BASE_URL}/api/user/${feedback.user_id}`, {
               headers: {
                 "Authorization": `Bearer ${token}`
               }

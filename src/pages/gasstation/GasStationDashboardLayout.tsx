@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -23,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface User {
   id: string;
@@ -88,7 +88,7 @@ export default function GasStationDashboardLayout() {
         try {
           // Optional: Fetch fresh user data from API
           const response = await axios.get(
-            `http://localhost:5001/api/user/${parsedUser.id}`,
+            `${API_BASE_URL}/api/user/${parsedUser.id}`,
             {
               headers: {
                 Authorization: `Bearer ${

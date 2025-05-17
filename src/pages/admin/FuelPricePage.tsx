@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/components/ui/use-toast";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface FuelPrice {
   id: string;
@@ -69,7 +70,7 @@ export default function FuelPricePage() {
       const token = getAuthToken();
       if (!token) return;
 
-      const response = await fetch("http://localhost:5001/api/price", {
+      const response = await fetch(`${API_BASE_URL}/api/price`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -139,7 +140,7 @@ export default function FuelPricePage() {
       const token = getAuthToken();
       if (!token) return;
 
-      const response = await fetch(`http://localhost:5001/api/price/${fuelType}`, {
+      const response = await fetch(`${API_BASE_URL}/api/price/${fuelType}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -218,8 +219,8 @@ export default function FuelPricePage() {
       };
 
       const url = isEditMode
-        ? `http://localhost:5001/api/price/${fuelType}`
-        : "http://localhost:5001/api/price";
+        ? `${API_BASE_URL}/api/price/${fuelType}`
+        : `${API_BASE_URL}/api/price`;
 
       const method = isEditMode ? "PUT" : "POST";
 

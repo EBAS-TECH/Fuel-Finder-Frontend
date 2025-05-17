@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Edit, Eye, EyeOff, User, Mail, Phone, MapPin, FileText, Navigation } from "lucide-react";
 import gasStationsImage from "@/assets/gas-stations.png";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Profile = () => {
   const { toast } = useToast();
@@ -57,7 +58,7 @@ const Profile = () => {
       }
 
       const response = await fetch(
-        `http://localhost:5001/api/station/user/${userId}`,
+        `${API_BASE_URL}/api/station/user/${userId}`,
         {
           headers: getAuthHeaders()
         }
@@ -162,7 +163,7 @@ const Profile = () => {
     try {
       const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
       const response = await fetch(
-        `http://localhost:5001/api/user/${userId}`,
+        `${API_BASE_URL}/api/user/${userId}`,
         {
           method: "PUT",
           headers: getAuthHeaders(),
@@ -229,7 +230,7 @@ const Profile = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5001/api/user/profile/change-password",
+        `${API_BASE_URL}/api/user/profile/change-password`,
         {
           method: "PUT",
           headers: getAuthHeaders(),

@@ -31,6 +31,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Color palette
 const COLORS = {
@@ -74,7 +75,7 @@ export default function DashboardPage() {
 
         // First, fetch the station ID for this user
         const stationResponse = await fetch(
-          `http://localhost:5001/api/station/user/${userId}`,
+          `${API_BASE_URL}/api/station/user/${userId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -89,7 +90,7 @@ export default function DashboardPage() {
 
         // Fetch feedback data
         const feedbackResponse = await fetch(
-          "http://localhost:5001/api/feedback/rate",
+          `${API_BASE_URL}/api/feedback/rate`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -102,7 +103,7 @@ export default function DashboardPage() {
 
         // Fetch fuel availability data
         const availabilityResponse = await fetch(
-          `http://localhost:5001/api/availability/station/${stationData.data.id}`,
+          `${API_BASE_URL}/api/availability/station/${stationData.data.id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

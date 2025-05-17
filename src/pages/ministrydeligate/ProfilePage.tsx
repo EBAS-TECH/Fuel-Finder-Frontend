@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Edit, User, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { useOutletContext } from "react-router-dom";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface UserData {
   id: string;
@@ -95,7 +95,7 @@ export default function ProfilePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5001/api/user/profile/change-password",
+        `${API_BASE_URL}/api/user/profile/change-password`,
         {
           method: "PUT",
           headers: {
@@ -147,7 +147,7 @@ export default function ProfilePage() {
 
     try {
       const response = await fetch(
-        `http://localhost:5001/api/user/${userData.id}`,
+        `${API_BASE_URL}/api/user/${userData.id}`,
         {
           method: "PUT",
           headers: {

@@ -31,6 +31,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+// Environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || API_BASE_URL.replace('https', 'wss');
+
 interface User {
   id: string;
   first_name: string;
@@ -135,7 +139,7 @@ export default function AdminLayout() {
 
         try {
           const response = await axios.get(
-            `http://localhost:5001/api/user/${parsedUser.id}`,
+            `${API_BASE_URL}/api/user/${parsedUser.id}`,
             {
               headers: {
                 Authorization: `Bearer ${
@@ -190,7 +194,7 @@ export default function AdminLayout() {
   }, [toast, navigate]);
 
   useEffect(() => {
-    const websocket = new WebSocket("ws://localhost:5001/ws");
+    const websocket = new WebSocket(`${WS_BASE_URL}/ws`);
     setWs(websocket);
 
     websocket.onopen = () => {
@@ -219,7 +223,7 @@ export default function AdminLayout() {
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await axios.get("http://localhost:5001/api/user", {
+      const response = await axios.get(`${API_BASE_URL}/api/user`, {
         headers: {
           Authorization: `Bearer ${
             localStorage.getItem("authToken") ||
@@ -248,18 +252,8 @@ export default function AdminLayout() {
   const getLastSixMonths = useCallback(() => {
     const months = [];
     const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     ];
     const date = new Date();
 
@@ -290,18 +284,8 @@ export default function AdminLayout() {
         const month = userDate.getMonth();
         const year = userDate.getFullYear();
         const monthNames = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
+          "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
         ];
         const monthYear = `${monthNames[month]} ${year}`;
 
@@ -456,7 +440,6 @@ export default function AdminLayout() {
                 to="/admin/delegates"
                 active={pathName.includes("/admin/delegates")}
               />
-
               <SidebarItem
                 icon={
                   <svg

@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface Delegate {
   id: string;
@@ -59,7 +60,7 @@ export default function DelegatesPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const response = await fetch("http://localhost:5001/api/user", {
+      const response = await fetch(`${API_BASE_URL}/api/user`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
@@ -107,7 +108,7 @@ export default function DelegatesPage() {
 
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const response = await fetch("http://localhost:5001/api/user", {
+      const response = await fetch(`${API_BASE_URL}/api/user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -156,7 +157,7 @@ export default function DelegatesPage() {
 
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const response = await fetch(`http://localhost:5001/api/user/${selectedDelegate.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/user/${selectedDelegate.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -205,7 +206,7 @@ export default function DelegatesPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const response = await fetch(`http://localhost:5001/api/user/${deleteDialog.delegateId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/user/${deleteDialog.delegateId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,

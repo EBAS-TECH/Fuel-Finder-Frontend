@@ -33,6 +33,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export default function StationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -61,7 +62,7 @@ export default function StationDetailPage() {
           throw new Error("No authentication token found");
         }
 
-        const response = await fetch(`http://localhost:5001/api/station/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/station/${id}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -91,7 +92,7 @@ export default function StationDetailPage() {
         const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
         if (!authToken) throw new Error("No authentication token found");
 
-        const response = await fetch(`http://localhost:5001/api/feedback/station/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/feedback/station/${id}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -110,7 +111,7 @@ export default function StationDetailPage() {
           data.data.map(async (feedback: any) => {
             try {
               const userResponse = await fetch(
-                `http://localhost:5001/api/user/${feedback.user_id}`,
+                `${API_BASE_URL}/api/user/${feedback.user_id}`,
                 {
                   method: "GET",
                   headers: {
@@ -174,7 +175,7 @@ export default function StationDetailPage() {
           throw new Error("No authentication token found");
         }
 
-        const response = await fetch(`http://localhost:5001/api/availability/station/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/availability/station/${id}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -236,7 +237,7 @@ export default function StationDetailPage() {
       const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       if (!authToken) throw new Error("No authentication token found");
 
-      const stationResponse = await fetch(`http://localhost:5001/api/station/${id}`, {
+      const stationResponse = await fetch(`${API_BASE_URL}/api/station/${id}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -248,7 +249,7 @@ export default function StationDetailPage() {
         throw new Error("Station not found or inaccessible");
       }
 
-      const response = await fetch(`http://localhost:5001/api/station/verify-station/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/station/verify-station/${id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${authToken}`,
