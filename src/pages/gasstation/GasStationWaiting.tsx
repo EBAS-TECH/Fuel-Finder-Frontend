@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import logoImage from "@/assets/newlog.png";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface UserData {
   id: string;
@@ -46,7 +47,7 @@ const GasStationWaiting = () => {
         currentUserData = JSON.parse(storedUserData);
       } else {
         // Fetch current user data if not in storage
-        const response = await fetch("http://localhost:5001/api/auth/me", {
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,

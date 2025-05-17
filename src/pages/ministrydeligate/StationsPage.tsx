@@ -33,6 +33,7 @@ import { CalendarIcon } from "lucide-react";
 import { format, differenceInHours } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface StationReport {
   stationId: string;
@@ -70,7 +71,7 @@ const DelegateStationsPage = () => {
           throw new Error("No authentication token found");
         }
 
-        const response = await fetch("http://localhost:5001/api/station/report/ministry", {
+        const response = await fetch(`${API_BASE_URL}/api/station/report/ministry`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${authToken}`,

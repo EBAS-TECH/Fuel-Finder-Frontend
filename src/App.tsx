@@ -30,67 +30,69 @@ import DelegateStationDetailPage from "./pages/ministrydeligate/StationDetailPag
 import DeligatedashboardLayout from "./pages/ministrydeligate/DeligatedashboardLayout";
 import DelegateStationsPage from "./pages/ministrydeligate/StationsPage";
 import DelegateProfilePage from "./pages/ministrydeligate/ProfilePage";
+import ForgotPassword from "./pages/ForgotPassword";
 
+// Create query client
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-code" element={<VerifyCode />} />
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/features" element={<Features />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/verify-code" element={<VerifyCode />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/forgot-password/:userId" element={<ForgotPassword />} />
 
-          {/* Gas Station Routes */}
-          <Route path="/gas-station">
-            <Route path="waiting" element={<GasStationWaiting />} />
-            <Route element={<GasStationDashboardLayout />}>
-              <Route path="dashboard" element={<GasStationHome />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="fuel-availability" element={<FuelAvailability />} />
-              <Route path="feedbacks" element={<Feedbacks />} />
+            {/* Gas Station Routes */}
+            <Route path="/gas-station">
+              <Route path="waiting" element={<GasStationWaiting />} />
+              <Route element={<GasStationDashboardLayout />}>
+                <Route path="dashboard" element={<GasStationHome />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="fuel-availability" element={<FuelAvailability />} />
+                <Route path="feedbacks" element={<Feedbacks />} />
+              </Route>
             </Route>
-          </Route>
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="delegates" element={<DelegatesPage />} />
-            <Route path="drivers" element={<DriversPage />} />
-            <Route path="drivers/:id" element={<DriverDetailPage />} />
-            <Route path="stations" element={<StationsPage />} />
-            <Route path="stations/:id" element={<StationDetailPage />} />
-            <Route path="fuel-price" element={<FuelPricePage />} />
-            <Route path="profile" element={<ProfilePage />} />
-          </Route>
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="delegates" element={<DelegatesPage />} />
+              <Route path="drivers" element={<DriversPage />} />
+              <Route path="drivers/:id" element={<DriverDetailPage />} />
+              <Route path="stations" element={<StationsPage />} />
+              <Route path="stations/:id" element={<StationDetailPage />} />
+              <Route path="fuel-price" element={<FuelPricePage />} />
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
 
-          <Route
-            path="/ministry-delegate"
-            element={<DeligatedashboardLayout />}
-          >
-            <Route index element={<DelegateStationsPage />} />
-            <Route path="profile" element={<DelegateProfilePage />} />
-            <Route path="stations" element={<DelegateStationsPage />} />
-            <Route
-              path="stations/:id"
-              element={<DelegateStationDetailPage />}
-            />
-          </Route>
-          {/* Catch-all route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            {/* Ministry Delegate Routes */}
+            <Route path="/ministry-delegate" element={<DeligatedashboardLayout />}>
+              <Route index element={<DelegateStationsPage />} />
+              <Route path="profile" element={<DelegateProfilePage />} />
+              <Route path="stations" element={<DelegateStationsPage />} />
+              <Route path="stations/:id" element={<DelegateStationDetailPage />} />
+            </Route>
+
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

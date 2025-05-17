@@ -31,7 +31,7 @@ const VerifyCode = () => {
       }
 
       const response = await fetch(
-        `http://localhost:5001/api/auth/verify/${userId}`,
+        `${API_BASE_URL}/api/auth/verify/${userId}`,
         {
           method: "PUT",
           headers: {
@@ -74,7 +74,7 @@ const VerifyCode = () => {
       setIsSubmitting(true);
       
       const response = await fetch(
-        `http://localhost:5001/api/auth/resend/${userId}`,
+        `${API_BASE_URL}/api/auth/resend/${userId}`,
         {
           method: "GET",
           headers: {
@@ -122,11 +122,11 @@ const VerifyCode = () => {
       {/* Left side - Logo area */}
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center">
         <div className="flex flex-col items-center max-w-md">
-          <div className="mb-12 scale-150">
-            <img 
-              src={logoImage} 
+            <div className="mb-12 scale-150">
+            <img
+              src={logoImage}
               alt="Fuel Finder Logo"
-              className="h-[52px] w-auto"
+              className="h-[160px] w-[160px] rounded-full border-4 border-green-500 object-cover"
             />
           </div>
           <h1 className="text-4xl font-bold text-center text-fuelGreen-500 mb-6">
