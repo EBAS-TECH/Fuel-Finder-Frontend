@@ -7,8 +7,6 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
-  Check,
-  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +38,7 @@ interface Station {
   user_id: string;
   address: string;
   availability: boolean;
-  status: "PENDING" | "VERIFIED" | "REJECTED";
+  status: "PENDING" | "VERIFIED" | "NOT-VERIFIED";
   created_at: string;
   updated_at: string | null;
   latitude: number;
@@ -61,7 +59,9 @@ export default function StationsPage() {
   const [filteredStations, setFilteredStations] = useState<Station[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"PENDING" | "VERIFIED" | "REJECTED">("PENDING");
+  const [activeTab, setActiveTab] = useState<
+    "PENDING" | "VERIFIED" | "NOT-VERIFIED"
+  >("PENDING");
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
@@ -102,7 +102,9 @@ export default function StationsPage() {
   }, [stations, activeTab, searchTerm]);
 
   const getAuthToken = (): string | null => {
-    return localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    return (
+      localStorage.getItem("authToken") || sessionStorage.getItem("authToken")
+    );
   };
 
   const redirectToLogin = () => {
@@ -150,20 +152,29 @@ export default function StationsPage() {
       }
 
       const data = await response.json();
-      const stationsWithUserDetails = await Promise.all(data.data.map(async (station: Station) => {
-        const userResponse = await fetch(`http://localhost:5001/api/user/${station.user_id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      console.log("Fetched stations:", data.data); // Debug log
 
-        if (!userResponse.ok) {
-          throw new Error(`Failed to fetch user details for station ${station.id}`);
-        }
+      const stationsWithUserDetails = await Promise.all(
+        data.data.map(async (station: Station) => {
+          const userResponse = await fetch(
+            `http://localhost:5001/api/user/${station.user_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
-        const userData = await userResponse.json();
-        return { ...station, user: userData.data };
-      }));
+          if (!userResponse.ok) {
+            throw new Error(
+              `Failed to fetch user details for station ${station.id}`
+            );
+          }
+
+          const userData = await userResponse.json();
+          return { ...station, user: userData.data };
+        })
+      );
 
       setStations(stationsWithUserDetails);
     } catch (error: any) {
@@ -179,8 +190,17 @@ export default function StationsPage() {
 
   const filterStations = () => {
     let filtered = [...stations];
-    filtered = filtered.filter((station) => station.status === activeTab);
 
+    // Filter by status
+    filtered = filtered.filter((station) => {
+      if (activeTab === "PENDING") return station.status === "PENDING";
+      if (activeTab === "VERIFIED") return station.status === "VERIFIED";
+      if (activeTab === "NOT-VERIFIED")
+        return station.status === "NOT-VERIFIED";
+      return true;
+    });
+
+    // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -332,55 +352,6 @@ export default function StationsPage() {
     }
   };
 
-  const handleStatusChange = async (
-    stationId: string,
-    newStatus: "VERIFIED" | "REJECTED"
-  ) => {
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        redirectToLogin();
-        return;
-      }
-
-      const response = await fetch(
-        `http://localhost:5001/api/station/update-status/${stationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            status: newStatus,
-          }),
-        }
-      );
-
-      if (response.status === 401) {
-        handleAuthError();
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${newStatus.toLowerCase()} station`);
-      }
-
-      toast({
-        title: "Success",
-        description: `Station ${newStatus.toLowerCase()} successfully`,
-      });
-      fetchStations();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description:
-          error.message || `Failed to ${newStatus.toLowerCase()} station`,
-        variant: "destructive",
-      });
-    }
-  };
-
   const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
   const paginatedStations = filteredStations.slice(
     (currentPage - 1) * itemsPerPage,
@@ -430,7 +401,7 @@ export default function StationsPage() {
           className="mb-5"
           value={activeTab}
           onValueChange={(value) =>
-            setActiveTab(value as "PENDING" | "VERIFIED" | "REJECTED")
+            setActiveTab(value as "PENDING" | "VERIFIED" | "NOT-VERIFIED")
           }
         >
           <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
@@ -455,9 +426,9 @@ export default function StationsPage() {
               Approved
             </TabsTrigger>
             <TabsTrigger
-              value="REJECTED"
+              value="NOT-VERIFIED"
               className={`bg-white border ${
-                activeTab === "REJECTED"
+                activeTab === "NOT-VERIFIED"
                   ? "border-green-500 text-green-500"
                   : "border-transparent"
               } rounded-lg shadow-sm`}
@@ -467,15 +438,17 @@ export default function StationsPage() {
           </TabsList>
         </Tabs>
 
-        <div className="w-72 relative mb-5">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Search station"
-            className="pl-10 bg-white border-none rounded-full h-10 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+       <div className="flex justify-end w-full mb-5">
+  <div className="w-72 relative">
+    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <Input
+      placeholder="Search station"
+      className="pl-10 bg-white border-none rounded-full h-10 w-full"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+  </div>
+</div>
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -514,7 +487,8 @@ export default function StationsPage() {
                   paginatedStations.map((station, index) => (
                     <TableRow
                       key={station.id}
-                      className="border-b hover:bg-gray-50"
+                      className="border-b hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(`/admin/stations/${station.id}`)}
                     >
                       <TableCell className="py-3 px-4 text-base">
                         {(currentPage - 1) * itemsPerPage + index + 1}
@@ -543,20 +517,27 @@ export default function StationsPage() {
                           className={`px-2 py-1 rounded-full text-xs ${
                             station.status === "VERIFIED"
                               ? "bg-green-100 text-green-800"
-                              : station.status === "REJECTED"
+                              : station.status === "NOT-VERIFIED"
                               ? "bg-red-100 text-red-800"
                               : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
-                          {station.status}
+                          {station.status === "NOT-VERIFIED"
+                            ? "REJECTED"
+                            : station.status}
                         </span>
                       </TableCell>
                       <TableCell className="py-3 px-4">
-                        <div className="flex justify-center gap-2">
+                        <div
+                          className="flex justify-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => navigate(`/station/${station.id}`)}
+                            onClick={() =>
+                              navigate(`/admin/stations/${station.id}`)
+                            }
                           >
                             <Eye className="h-4 w-4 text-green-500" />
                           </Button>
@@ -564,42 +545,23 @@ export default function StationsPage() {
                             variant="ghost"
                             size="icon"
                             className="text-green-500"
-                            onClick={() => handleEditStation(station)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditStation(station);
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteClick(station)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(station);
+                            }}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>
-
-                          {activeTab === "PENDING" && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-green-600 text-sm"
-                                onClick={() =>
-                                  handleStatusChange(station.id, "VERIFIED")
-                                }
-                              >
-                                <Check className="h-4 w-4 mr-1" /> Approve
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 text-sm"
-                                onClick={() =>
-                                  handleStatusChange(station.id, "REJECTED")
-                                }
-                              >
-                                <X className="h-4 w-4 mr-1" /> Reject
-                              </Button>
-                            </>
-                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -683,7 +645,9 @@ export default function StationsPage() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="en_name" className="text-base">English Name</Label>
+                  <Label htmlFor="en_name" className="text-base">
+                    English Name
+                  </Label>
                   <Input
                     id="en_name"
                     value={editForm.en_name}
@@ -694,7 +658,9 @@ export default function StationsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="am_name" className="text-base">Amharic Name</Label>
+                  <Label htmlFor="am_name" className="text-base">
+                    Amharic Name
+                  </Label>
                   <Input
                     id="am_name"
                     value={editForm.am_name}
@@ -708,7 +674,9 @@ export default function StationsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tin_number" className="text-base">TIN Number</Label>
+                  <Label htmlFor="tin_number" className="text-base">
+                    TIN Number
+                  </Label>
                   <Input
                     id="tin_number"
                     value={editForm.tin_number}
@@ -719,7 +687,9 @@ export default function StationsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address" className="text-base">Address</Label>
+                  <Label htmlFor="address" className="text-base">
+                    Address
+                  </Label>
                   <Input
                     id="address"
                     value={editForm.address}
@@ -733,7 +703,9 @@ export default function StationsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="latitude" className="text-base">Latitude</Label>
+                  <Label htmlFor="latitude" className="text-base">
+                    Latitude
+                  </Label>
                   <Input
                     id="latitude"
                     type="number"
@@ -748,7 +720,9 @@ export default function StationsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="longitude" className="text-base">Longitude</Label>
+                  <Label htmlFor="longitude" className="text-base">
+                    Longitude
+                  </Label>
                   <Input
                     id="longitude"
                     type="number"
@@ -768,7 +742,9 @@ export default function StationsPage() {
                 <h3 className="font-medium mb-4 text-base">User Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="first_name" className="text-base">First Name</Label>
+                    <Label htmlFor="first_name" className="text-base">
+                      First Name
+                    </Label>
                     <Input
                       id="first_name"
                       value={editForm.user.first_name}
@@ -785,7 +761,9 @@ export default function StationsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="last_name" className="text-base">Last Name</Label>
+                    <Label htmlFor="last_name" className="text-base">
+                      Last Name
+                    </Label>
                     <Input
                       id="last_name"
                       value={editForm.user.last_name}
@@ -802,7 +780,9 @@ export default function StationsPage() {
 
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   <div className="space-y-2">
-                    <Label htmlFor="username" className="text-base">Username</Label>
+                    <Label htmlFor="username" className="text-base">
+                      Username
+                    </Label>
                     <Input
                       id="username"
                       value={editForm.user.username}
@@ -816,7 +796,9 @@ export default function StationsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-base">Email</Label>
+                    <Label htmlFor="email" className="text-base">
+                      Email
+                    </Label>
                     <Input
                       id="email"
                       type="email"
@@ -861,9 +843,10 @@ export default function StationsPage() {
 
           <div className="py-4">
             <p className="text-sm text-gray-600 mb-4">
-              This action cannot be undone. This will permanently delete the station from our servers.
+              This action cannot be undone. This will permanently delete the
+              station from our servers.
             </p>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Name:</span>
@@ -884,10 +867,7 @@ export default function StationsPage() {
               >
                 Cancel
               </Button>
-              <Button
-                variant="destructive"
-                onClick={confirmDelete}
-              >
+              <Button variant="destructive" onClick={confirmDelete}>
                 Delete
               </Button>
             </div>

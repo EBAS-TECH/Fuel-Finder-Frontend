@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Search, Pencil, Trash2, X, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -37,6 +37,7 @@ export default function FuelPricePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteTypeDialog, setDeleteTypeDialog] = useState({
     open: false,
     fuelType: "",
@@ -47,7 +48,7 @@ export default function FuelPricePage() {
   const [price, setPrice] = useState("");
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [error, setError] = useState(""); // New state for error message
+  const [error, setError] = useState("");
 
   const getAuthToken = () => {
     return localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -62,40 +63,40 @@ export default function FuelPricePage() {
     return true;
   };
 
+  const fetchFuelPrices = async () => {
+    setIsLoading(true);
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+
+      const response = await fetch("http://localhost:5001/api/price", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch fuel prices");
+      }
+
+      setFuelPrices(data.data);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!checkAuth()) return;
-
-    const fetchFuelPrices = async () => {
-      try {
-        const token = getAuthToken();
-        if (!token) return;
-
-        const response = await fetch("http://localhost:5001/api/price", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch fuel prices");
-        }
-
-        setFuelPrices(data.data);
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchFuelPrices();
   }, []);
 
@@ -116,7 +117,7 @@ export default function FuelPricePage() {
     setEndDate(null);
     setIsEditMode(false);
     setIsDialogOpen(true);
-    setError(""); // Reset error message
+    setError("");
   };
 
   const handleEditFuelPrice = (fuel: FuelPrice) => {
@@ -128,7 +129,7 @@ export default function FuelPricePage() {
     setEndDate(fuel.effective_upto ? new Date(fuel.effective_upto) : null);
     setIsEditMode(true);
     setIsDialogOpen(true);
-    setError(""); // Reset error message
+    setError("");
   };
 
   const handleDeleteFuelPriceByType = async (fuelType: string) => {
@@ -152,8 +153,7 @@ export default function FuelPricePage() {
         throw new Error(data.message || "Failed to delete fuel price");
       }
 
-      const updatedPrices = fuelPrices.filter(fuel => fuel.fuel_type !== fuelType);
-      setFuelPrices(updatedPrices);
+      await fetchFuelPrices(); // Refresh data after deletion
 
       toast({
         title: "Success",
@@ -185,7 +185,6 @@ export default function FuelPricePage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!checkAuth()) return;
 
     if (!price || !startDate) {
@@ -204,6 +203,7 @@ export default function FuelPricePage() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const token = getAuthToken();
       if (!token) {
@@ -238,22 +238,18 @@ export default function FuelPricePage() {
         throw new Error(data.message || `Failed to ${isEditMode ? 'update' : 'create'} fuel price`);
       }
 
-      if (isEditMode) {
-        setFuelPrices(fuelPrices.map(fuel =>
-          fuel.fuel_type === fuelType ? data.data : fuel
-        ));
-      } else {
-        setFuelPrices([...fuelPrices, data.data]);
-      }
+      await fetchFuelPrices(); // Refresh data after successful operation
 
       toast({
         title: "Success",
         description: `Fuel price ${isEditMode ? 'updated' : 'created'} successfully`,
       });
 
-      setIsDialogOpen(false);
+      setIsDialogOpen(false); // Close the dialog
     } catch (error: any) {
       setError(error.message || "Failed to save fuel price");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -363,13 +359,11 @@ export default function FuelPricePage() {
                 <select
                   value={fuelType}
                   onChange={(e) => setFuelType(e.target.value)}
-                  className="w-full p-2 border rounded-md bg-[#F2FCE2] focus:ring-green-200 focus:border-green-300"
+                  className="w-full p-2 border rounded-md bg-[#eef6e2] focus:ring-green-200 focus:border-green-300"
                   disabled={isEditMode}
                 >
                   <option value="PETROL">Petrol</option>
                   <option value="DIESEL">Diesel</option>
-                  <option value="CNG">CNG</option>
-                  <option value="LPG">LPG</option>
                 </select>
                 {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
               </div>
@@ -457,12 +451,16 @@ export default function FuelPricePage() {
                 </Popover>
               </div>
 
-              <div className="flex justify-end mt-4">
+              <div className="flex justify-end gap-2 mt-4">
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
                 <Button
                   type="submit"
                   className="bg-green-500 hover:bg-green-600 text-white"
+                  disabled={isSubmitting}
                 >
-                  {isEditMode ? "Update" : "Create"} Fuel Price
+                  {isSubmitting ? "Processing..." : isEditMode ? "Update" : "Create"} Fuel Price
                 </Button>
               </div>
             </div>
