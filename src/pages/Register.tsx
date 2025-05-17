@@ -66,7 +66,7 @@ const Register = () => {
           role: "DRIVER",
         };
 
-        response = await fetch("${API_BASE_URL}/api/auth/signup", {
+        response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -162,11 +162,11 @@ const Register = () => {
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center sticky top-0 h-screen">
         <div className="flex flex-col items-center max-w-md">
           {/* Fixed Logo */}
-            <div className="mb-12 scale-150">
+         <div className="mb-12 scale-150">
             <img
               src={logoImage}
               alt="Fuel Finder Logo"
-              className="h-[160px] w-[160px] rounded-full border-4 border-green-500 object-cover"
+              className="h-[160px] w-[160px] rounded-full border-2 border-green-500 object-cover shadow-lg"
             />
           </div>
           <h1 className="text-4xl font-bold text-center text-fuelGreen-500 mb-6">
