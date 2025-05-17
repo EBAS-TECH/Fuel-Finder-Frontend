@@ -3,12 +3,11 @@ import { useParams, Link } from "react-router-dom";
 import {
   ChevronLeft,
   Star,
-  Mail,
-  Phone,
   MapPin,
   Globe,
   Filter,
   X,
+  CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,14 +53,11 @@ import { useToast } from "@/components/ui/use-toast";
 export default function StationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState("Stars");
-  const [sort, setSort] = useState("Date");
+  const [filter, setFilter] = useState("all");
   const [fuelType, setFuelType] = useState("");
   const [feedbackDate, setFeedbackDate] = useState<Date | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [status, setStatus] = useState("Pending");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAiSummaryOpen, setIsAiSummaryOpen] = useState(false);
   const [stationData, setStationData] = useState<any>(null);
   const [feedbackData, setFeedbackData] = useState<any[]>([]);
@@ -231,7 +227,6 @@ export default function StationDetailPage() {
     fetchFuelAvailabilityData();
   }, [id, toast]);
 
-  // Render star ratings
   const renderStars = (rating: number) => {
     return Array(5)
       .fill(0)
@@ -245,53 +240,51 @@ export default function StationDetailPage() {
       ));
   };
 
-  // Calculate average rating
   const calculateAverageRating = () => {
-    if (feedbackData.length === 0) return 0;
-    const totalRating = feedbackData.reduce((sum, feedback) => sum + feedback.rating, 0);
-    return totalRating / feedbackData.length;
+    if (originalFeedbackData.length === 0) return 0;
+    const totalRating = originalFeedbackData.reduce(
+      (sum, feedback) => sum + feedback.rating,
+      0
+    );
+    return totalRating / originalFeedbackData.length;
   };
 
-  // Pagination handler
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Status change handler
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus);
-    setIsDialogOpen(false);
-  };
-
-  // Filter feedback data by date
   useEffect(() => {
+    let filtered = [...originalFeedbackData];
+
+    if (filter !== "all") {
+      filtered = filtered.filter(feedback => feedback.rating === parseInt(filter));
+    }
+
     if (feedbackDate) {
-      const filtered = originalFeedbackData.filter(feedback => {
+      filtered = filtered.filter(feedback => {
         const feedbackDateObj = new Date(feedback.created_at);
         return feedbackDateObj.toDateString() === feedbackDate.toDateString();
       });
-      setFeedbackData(filtered);
-    } else {
-      setFeedbackData(originalFeedbackData);
     }
-  }, [feedbackDate, originalFeedbackData]);
 
-  // Filter fuel availability data
+    setFeedbackData(filtered);
+  }, [filter, feedbackDate, originalFeedbackData]);
+
   useEffect(() => {
     let filtered = [...originalFuelAvailabilityData];
-    
+
     if (fuelType) {
       filtered = filtered.filter(item => item.fuel_type === fuelType.toUpperCase());
     }
-    
+
     if (startDate) {
       filtered = filtered.filter(item => new Date(item.up_time) >= startDate);
     }
-    
+
     if (endDate) {
       filtered = filtered.filter(item => new Date(item.down_time) <= endDate);
     }
-    
+
     setFuelAvailabilityData(filtered);
   }, [fuelType, startDate, endDate, originalFuelAvailabilityData]);
 
@@ -352,9 +345,7 @@ export default function StationDetailPage() {
           <span>Station's Detail</span>
         </Link>
 
-        {/* Top section with station info and feedbacks */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Station info card */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col items-center">
               <div className="w-24 h-24 rounded-full overflow-hidden p-2 border flex items-center justify-center mb-3">
@@ -374,7 +365,9 @@ export default function StationDetailPage() {
 
               <div className="flex items-center mb-5">
                 {renderStars(Math.floor(calculateAverageRating()))}
-                <span className="ml-2">{calculateAverageRating().toFixed(1)}</span>
+                <span className="ml-2">
+                  {calculateAverageRating().toFixed(1)} ({originalFeedbackData.length} reviews)
+                </span>
               </div>
 
               <div className="w-full space-y-4">
@@ -389,14 +382,18 @@ export default function StationDetailPage() {
                   <MapPin className="text-green-500 h-5 w-5 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-500">Latitude</p>
-                    <p className="text-sm">{stationData.latitude?.toFixed(6) || "N/A"}</p>
+                    <p className="text-sm">
+                      {stationData.latitude?.toFixed(6) || "N/A"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <MapPin className="text-green-500 h-5 w-5 mt-0.5" />
                   <div>
                     <p className="text-sm text-gray-500">Longitude</p>
-                    <p className="text-sm">{stationData.longitude?.toFixed(6) || "N/A"}</p>
+                    <p className="text-sm">
+                      {stationData.longitude?.toFixed(6) || "N/A"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -410,10 +407,8 @@ export default function StationDetailPage() {
             </div>
           </div>
 
-          {/* Feedback section */}
           <div className="lg:col-span-2">
             <div className="bg-white p-6 rounded-lg shadow-sm h-full relative">
-              {/* Status button at the top */}
               <div className="flex justify-between mb-4">
                 <Button
                   onClick={() => setIsAiSummaryOpen(true)}
@@ -421,73 +416,114 @@ export default function StationDetailPage() {
                 >
                   AI Summary for station
                 </Button>
-
-                <Button
-                  onClick={() => setIsDialogOpen(true)}
-                  className={`px-4 py-1 rounded-full text-white text-sm ${
-                    status === "Pending"
-                      ? "bg-yellow-500 hover:bg-yellow-600"
-                      : status === "Approved"
-                      ? "bg-green-500 hover:bg-green-600"
-                      : "bg-red-500 hover:bg-red-600"
-                  }`}
-                >
-                  {status}
-                </Button>
               </div>
 
               <div className="flex justify-between items-center mb-5">
                 <h3 className="text-lg font-medium">Feedbacks</h3>
                 <div className="flex gap-2">
                   <Select value={filter} onValueChange={setFilter}>
-                    <SelectTrigger className="w-28 border border-gray-200 text-sm">
-                      <SelectValue placeholder="Stars" />
+                    <SelectTrigger className="w-36 border border-gray-200 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                        <SelectValue placeholder="Filter by Rating" />
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1 Star</SelectItem>
-                      <SelectItem value="2">2 Stars</SelectItem>
-                      <SelectItem value="3">3 Stars</SelectItem>
-                      <SelectItem value="4">4 Stars</SelectItem>
-                      <SelectItem value="5">5 Stars</SelectItem>
+                      <SelectItem value="all">All Ratings</SelectItem>
+                      <SelectItem value="5">
+                        <div className="flex items-center gap-1">
+                          {Array(5).fill(0).map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          ))}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="4">
+                        <div className="flex items-center gap-1">
+                          {Array(4).fill(0).map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          ))}
+                          <Star className="h-4 w-4 text-gray-200" />
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="3">
+                        <div className="flex items-center gap-1">
+                          {Array(3).fill(0).map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          ))}
+                          {Array(2).fill(0).map((_, i) => (
+                            <Star key={i+3} className="h-4 w-4 text-gray-200" />
+                          ))}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="2">
+                        <div className="flex items-center gap-1">
+                          {Array(2).fill(0).map((_, i) => (
+                            <Star key={i} className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          ))}
+                          {Array(3).fill(0).map((_, i) => (
+                            <Star key={i+2} className="h-4 w-4 text-gray-200" />
+                          ))}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="1">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          {Array(4).fill(0).map((_, i) => (
+                            <Star key={i+1} className="h-4 w-4 text-gray-200" />
+                          ))}
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-32 border border-gray-200 text-sm">
-                        {feedbackDate ? format(feedbackDate, "MMM dd, yyyy") : "Date"}
+                      <Button variant="outline" className="w-36 border border-gray-200 text-sm">
+                        <CalendarDays className="h-4 w-4 mr-2" />
+                        {feedbackDate ? format(feedbackDate, "MMM dd") : "Filter by Date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <Calendar
                         mode="single"
                         selected={feedbackDate}
-                        onSelect={setFeedbackDate}
+                        onSelect={(date) => setFeedbackDate(date || undefined)}
                         initialFocus
                       />
+                      {feedbackDate && (
+                        <div className="p-2 border-t flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFeedbackDate(undefined)}
+                          >
+                            Clear Date
+                          </Button>
+                        </div>
+                      )}
                     </PopoverContent>
                   </Popover>
                 </div>
               </div>
 
               <div className="space-y-6">
-                {feedbackData.slice(0, 3).map((feedback, index) => (
-                  <div
-                    key={feedback.id}
-                    className="border-l-4 border-green-500 pl-4 mb-4"
-                  >
+                {feedbackData.slice(0, 3).map((feedback) => (
+                  <div key={feedback.id} className="border-l-4 border-green-500 pl-4 mb-4">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full overflow-hidden">
                           <img
                             src={feedback.user?.profile_pic || "/lovable-uploads/33aaae15-01dd-4225-9aea-5e05b6b69803.png"}
-                            alt={feedback.user?.firstName || "User"}
+                            alt={`${feedback.user?.first_name || 'User'} profile`}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/default-user.png";
+                            }}
                           />
                         </div>
                         <div>
                           <h4 className="font-medium text-green-700">
-                            {feedback.user?.first_name} {feedback.user?.last_name}
+                            {feedback.user?.first_name || 'Unknown'} {feedback.user?.last_name || 'User'}
                           </h4>
                           <p className="text-xs text-gray-400">
                             {new Date(feedback.created_at).toLocaleDateString()}
@@ -512,17 +548,11 @@ export default function StationDetailPage() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          if (currentPage > 1)
-                            handlePageChange(currentPage - 1);
+                          if (currentPage > 1) handlePageChange(currentPage - 1);
                         }}
-                        className={
-                          currentPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                       />
                     </PaginationItem>
-
                     {[1, 2].map((page) => (
                       <PaginationItem key={page}>
                         <PaginationLink
@@ -542,20 +572,14 @@ export default function StationDetailPage() {
                         </PaginationLink>
                       </PaginationItem>
                     ))}
-
                     <PaginationItem>
                       <PaginationNext
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          if (currentPage < 2)
-                            handlePageChange(currentPage + 1);
+                          if (currentPage < 2) handlePageChange(currentPage + 1);
                         }}
-                        className={
-                          currentPage === 2
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
+                        className={currentPage === 2 ? "pointer-events-none opacity-50" : ""}
                       />
                     </PaginationItem>
                   </PaginationContent>
@@ -565,10 +589,8 @@ export default function StationDetailPage() {
           </div>
         </div>
 
-        {/* Bottom section with fuel availability */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-medium mb-4">Fuel Availability Report</h3>
-
           <div className="flex flex-wrap gap-2 mb-4">
             <Select value={fuelType} onValueChange={setFuelType}>
               <SelectTrigger className="w-32 border border-gray-200">
@@ -579,7 +601,6 @@ export default function StationDetailPage() {
                 <SelectItem value="petrol">Petrol</SelectItem>
               </SelectContent>
             </Select>
-
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-32 border border-gray-200">
@@ -595,7 +616,6 @@ export default function StationDetailPage() {
                 />
               </PopoverContent>
             </Popover>
-
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-32 border border-gray-200">
@@ -611,7 +631,6 @@ export default function StationDetailPage() {
                 />
               </PopoverContent>
             </Popover>
-
             <Button
               onClick={() => {
                 setFuelType("");
@@ -624,25 +643,14 @@ export default function StationDetailPage() {
               Clear
             </Button>
           </div>
-
           <Table className="w-full border border-gray-100">
             <TableHeader>
               <TableRow>
-                <TableHead className="bg-green-500 text-white font-normal w-16">
-                  ID
-                </TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">
-                  Fuel Name
-                </TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">
-                  Start Date
-                </TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">
-                  End Date
-                </TableHead>
-                <TableHead className="bg-green-500 text-white font-normal text-center">
-                  Available hrs
-                </TableHead>
+                <TableHead className="bg-green-500 text-white font-normal w-16">ID</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Fuel Name</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Start Date</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">End Date</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal text-center">Available hrs</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -666,18 +674,17 @@ export default function StationDetailPage() {
               )}
             </TableBody>
           </Table>
-
           <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-500">Showing 1 - {fuelAvailabilityData.length} of {fuelAvailabilityData.length}</div>
+            <div className="text-sm text-gray-500">
+              Showing 1 - {fuelAvailabilityData.length} of {fuelAvailabilityData.length}
+            </div>
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     className={`p-1.5 rounded-full ${
-                      currentPage === 1
-                        ? "bg-gray-100 text-gray-400"
-                        : "bg-gray-200 text-gray-600"
+                      currentPage === 1 ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
                     }`}
                     disabled={currentPage === 1}
                   >
@@ -700,9 +707,7 @@ export default function StationDetailPage() {
                   <button
                     onClick={() => handlePageChange(1)}
                     className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      currentPage === 1
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-200 text-gray-600"
+                      currentPage === 1 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
                     }`}
                   >
                     1
@@ -712,9 +717,7 @@ export default function StationDetailPage() {
                   <button
                     onClick={() => handlePageChange(2)}
                     className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      currentPage === 2
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-200 text-gray-600"
+                      currentPage === 2 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
                     }`}
                   >
                     2
@@ -724,9 +727,7 @@ export default function StationDetailPage() {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     className={`p-1.5 rounded-full ${
-                      currentPage === 2
-                        ? "bg-gray-100 text-gray-400"
-                        : "bg-gray-200 text-gray-600"
+                      currentPage === 2 ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
                     }`}
                     disabled={currentPage === 2}
                   >
@@ -751,58 +752,6 @@ export default function StationDetailPage() {
         </div>
       </div>
 
-      {/* Status Change Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Change Station Status</DialogTitle>
-            <DialogDescription>
-              Select the new status for this station.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2">
-              <Button
-                onClick={() => handleStatusChange("Pending")}
-                className={`w-full ${
-                  status === "Pending"
-                    ? "bg-yellow-500 text-white"
-                    : "bg-gray-100 hover:bg-yellow-500 hover:text-white"
-                }`}
-              >
-                Pending
-              </Button>
-              <Button
-                onClick={() => handleStatusChange("Approved")}
-                className={`w-full ${
-                  status === "Approved"
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-100 hover:bg-green-500 hover:text-white"
-                }`}
-              >
-                Approved
-              </Button>
-              <Button
-                onClick={() => handleStatusChange("Rejected")}
-                className={`w-full ${
-                  status === "Rejected"
-                    ? "bg-red-500 text-white"
-                    : "bg-gray-100 hover:bg-red-500 hover:text-white"
-                }`}
-              >
-                Rejected
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* AI Summary Dialog */}
       <Dialog open={isAiSummaryOpen} onOpenChange={setIsAiSummaryOpen}>
         <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-white">
           <div className="p-6 relative">
