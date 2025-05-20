@@ -3,8 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useToast } from "@/components/ui/use-toast";
 import VerificationInput from "@/components/auth/VerificationInput";
-import logoImage from '../assets/logo.png';
-
+import logoImage from "../assets/logo.png";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -13,7 +12,8 @@ const VerifyCode = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchParams] = useSearchParams();
 
-  const userId = searchParams.get("userId") || localStorage.getItem("tempUserId");
+  const userId =
+    searchParams.get("userId") || localStorage.getItem("tempUserId");
   const email = localStorage.getItem("tempUserEmail");
 
   const handleVerify = async (code) => {
@@ -30,18 +30,25 @@ const VerifyCode = () => {
 
     try {
       if (!userId || !email) {
-        throw new Error("Your verification session has expired. Please register again.");
+        throw new Error(
+          "Your verification session has expired. Please register again."
+        );
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/verify/${userId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: code }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/auth/verify/${userId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: code }),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || "Verification failed. Please try again.");
+        throw new Error(
+          data.message || "Verification failed. Please try again."
+        );
       }
 
       localStorage.removeItem("tempUserId");
@@ -61,14 +68,22 @@ const VerifyCode = () => {
   const handleResendCode = async () => {
     try {
       if (!userId) {
-        throw new Error("We couldn't identify your account. Please try registering again.");
+        throw new Error(
+          "We couldn't identify your account. Please try registering again."
+        );
       }
 
       setIsSubmitting(true);
-      const response = await fetch(`${API_BASE_URL}/api/auth/resend/${userId}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/auth/resend/${userId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }
+      );
 
       const contentType = response.headers.get("content-type");
       if (!contentType?.includes("application/json")) {
@@ -76,16 +91,22 @@ const VerifyCode = () => {
       }
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Failed to send a new verification code.");
+      if (!response.ok)
+        throw new Error(
+          result.message || "Failed to send a new verification code."
+        );
 
       toast({
         title: "New Code Sent!",
-        description: result.message || "A new verification code has been sent to your email.",
+        description:
+          result.message ||
+          "A new verification code has been sent to your email.",
       });
     } catch (error) {
-      const errorMessage = error.message.startsWith("<") || error.message.startsWith("{") 
-        ? "Failed to resend verification code. Please try again." 
-        : error.message;
+      const errorMessage =
+        error.message.startsWith("<") || error.message.startsWith("{")
+          ? "Failed to resend verification code. Please try again."
+          : error.message;
 
       toast({
         title: "Failed to Resend",
@@ -100,7 +121,11 @@ const VerifyCode = () => {
   const BackButton = ({ mobile = false }) => (
     <Link
       to="/"
-      className={`${mobile ? "md:hidden" : "hidden md:flex"} text-fuelGreen-500 flex items-center hover:text-fuelGreen-600 transition-colors ${mobile ? "text-sm mb-8" : "mt-12"}`}
+      className={`${
+        mobile ? "md:hidden" : "hidden md:flex"
+      } text-fuelGreen-500 flex items-center hover:text-fuelGreen-600 transition-colors ${
+        mobile ? "text-sm mb-8" : "mt-12"
+      }`}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -141,7 +166,7 @@ const VerifyCode = () => {
       <div className="w-full md:w-1/2 bg-white p-8 flex items-center justify-center">
         <div className="w-full max-w-md">
           <BackButton mobile />
-          
+
           <h2 className="text-3xl font-bold mb-4 text-center">Verification</h2>
           <p className="text-gray-600 mb-8 text-center">
             Enter the 6-digit code sent to{" "}
