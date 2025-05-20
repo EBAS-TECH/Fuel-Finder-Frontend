@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   UserCog,
+  Fuel,
 } from "lucide-react";
 import axios from "axios";
 import logoImage from "@/assets/logo.png";
@@ -429,7 +430,7 @@ export default function AdminLayout() {
                 active={pathName.includes("/admin/drivers")}
               />
               <SidebarItem
-                icon={<Users className="h-5 w-5" />}
+                icon={<Fuel className="h-5 w-5" />}
                 label="Stations"
                 to="/admin/stations"
                 active={pathName.includes("/admin/stations")}

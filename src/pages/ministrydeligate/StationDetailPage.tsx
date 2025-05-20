@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import {
   ChevronLeft,
   Star,
@@ -49,13 +49,30 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://fuel-finder-backend.onrender.com";
+
+interface LocationState {
+  rank?: string;
+  reason?: string;
+}
+
+interface FuelAvailability {
+  id: string;
+  station_id: string;
+  fuel_type: string;
+  up_time: string;
+  down_time: string | null;
+  available: boolean;
+  availability_duration: string;
+}
 
 export default function StationDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const { rank, reason } = location.state as LocationState || {};
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("all");
-  const [fuelType, setFuelType] = useState("");
+  const [fuelType, setFuelType] = useState("all");
   const [feedbackDate, setFeedbackDate] = useState<Date | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -63,9 +80,8 @@ export default function StationDetailPage() {
   const [stationData, setStationData] = useState<any>(null);
   const [feedbackData, setFeedbackData] = useState<any[]>([]);
   const [originalFeedbackData, setOriginalFeedbackData] = useState<any[]>([]);
-  const [fuelAvailabilityData, setFuelAvailabilityData] = useState<any[]>([]);
-  const [originalFuelAvailabilityData, setOriginalFuelAvailabilityData] = useState<any[]>([]);
-  const [aiSummaryData, setAiSummaryData] = useState<any>(null);
+  const [fuelAvailabilityData, setFuelAvailabilityData] = useState<FuelAvailability[]>([]);
+  const [originalFuelAvailabilityData, setOriginalFuelAvailabilityData] = useState<FuelAvailability[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -152,43 +168,6 @@ export default function StationDetailPage() {
       }
     };
 
-    const fetchAiSummaryData = async () => {
-      try {
-        const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-
-        if (!authToken) {
-          throw new Error("No authentication token found");
-        }
-
-        const response = await fetch(`${API_BASE_URL}/api/station/report/ministry`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            start_date: "2024-01-31T21:00:00.000Z",
-            end_date: "2025-05-22T21:00:00.000Z"
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Failed to fetch AI summary data: ${errorData.message || "Unknown error"}`);
-        }
-
-        const data = await response.json();
-        const stationSummary = data.data.find((item: any) => item.stationId === id);
-        setAiSummaryData(stationSummary);
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
-    };
-
     const fetchFuelAvailabilityData = async () => {
       try {
         const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -224,7 +203,6 @@ export default function StationDetailPage() {
 
     fetchStationDetails();
     fetchFeedbackData();
-    fetchAiSummaryData();
     fetchFuelAvailabilityData();
   }, [id, toast]);
 
@@ -274,16 +252,27 @@ export default function StationDetailPage() {
   useEffect(() => {
     let filtered = [...originalFuelAvailabilityData];
 
-    if (fuelType) {
+    if (fuelType !== "all") {
       filtered = filtered.filter(item => item.fuel_type === fuelType.toUpperCase());
     }
 
     if (startDate) {
-      filtered = filtered.filter(item => new Date(item.up_time) >= startDate);
+      filtered = filtered.filter(item => {
+        const upTime = new Date(item.up_time);
+        return upTime >= startDate;
+      });
     }
 
     if (endDate) {
-      filtered = filtered.filter(item => new Date(item.down_time) <= endDate);
+      filtered = filtered.filter(item => {
+        const upTime = new Date(item.up_time);
+        if (!item.down_time) {
+          // If still available, include it only if upTime is within the range
+          return upTime <= endDate;
+        }
+        const downTime = new Date(item.down_time);
+        return upTime >= startDate && downTime <= endDate;
+      });
     }
 
     setFuelAvailabilityData(filtered);
@@ -351,7 +340,7 @@ export default function StationDetailPage() {
             <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col items-center">
               <div className="w-24 h-24 rounded-full overflow-hidden p-2 border flex items-center justify-center mb-3">
                 <img
-                  src={stationData.logo || "/lovable-uploads/3b24a52c-5dee-4810-98d3-f9832a4c6d5e.png"}
+                  src={stationData.logo || "/default-logo.png"}
                   alt={stationData.en_name}
                   className="w-20 h-20 object-contain"
                 />
@@ -514,7 +503,7 @@ export default function StationDetailPage() {
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full overflow-hidden">
                           <img
-                            src={feedback.user?.profile_pic || "/lovable-uploads/33aaae15-01dd-4225-9aea-5e05b6b69803.png"}
+                            src={feedback.user?.profile_pic || "/default-user.png"}
                             alt={`${feedback.user?.first_name || 'User'} profile`}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -598,8 +587,9 @@ export default function StationDetailPage() {
                 <SelectValue placeholder="Fuel Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="diesel">Diesel</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="petrol">Petrol</SelectItem>
+                <SelectItem value="diesel">Diesel</SelectItem>
               </SelectContent>
             </Select>
             <Popover>
@@ -632,17 +622,6 @@ export default function StationDetailPage() {
                 />
               </PopoverContent>
             </Popover>
-            <Button
-              onClick={() => {
-                setFuelType("");
-                setStartDate(undefined);
-                setEndDate(undefined);
-              }}
-              variant="outline"
-              className="text-gray-600 px-4"
-            >
-              Clear
-            </Button>
           </div>
           <Table className="w-full border border-gray-100">
             <TableHeader>
@@ -652,6 +631,7 @@ export default function StationDetailPage() {
                 <TableHead className="bg-green-500 text-white font-normal">Start Date</TableHead>
                 <TableHead className="bg-green-500 text-white font-normal">End Date</TableHead>
                 <TableHead className="bg-green-500 text-white font-normal text-center">Available hrs</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -660,15 +640,22 @@ export default function StationDetailPage() {
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{item.fuel_type}</TableCell>
                   <TableCell>{new Date(item.up_time).toLocaleDateString()}</TableCell>
-                  <TableCell>{new Date(item.down_time).toLocaleDateString()}</TableCell>
+                  <TableCell>{item.down_time ? new Date(item.down_time).toLocaleDateString() : "Still available"}</TableCell>
                   <TableCell className="text-center">
                     {Math.floor(parseFloat(item.availability_duration) / 3600).toFixed(1)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      item.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}>
+                      {item.available ? "Available" : "Unavailable"}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}
               {fuelAvailabilityData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-4 text-gray-500">
                     No data available
                   </TableCell>
                 </TableRow>
@@ -769,7 +756,7 @@ export default function StationDetailPage() {
             <div className="flex flex-col items-center mt-6 mb-4">
               <div className="w-20 h-20 rounded-full overflow-hidden mb-4">
                 <img
-                  src={stationData.logo || "/lovable-uploads/3b24a52c-5dee-4810-98d3-f9832a4c6d5e.png"}
+                  src={stationData.logo || "/default-logo.png"}
                   alt={stationData.en_name}
                   className="w-full h-full object-contain"
                 />
@@ -784,10 +771,10 @@ export default function StationDetailPage() {
                 <p className="text-green-600 font-medium">Rank :</p>
                 <div className="flex items-center">
                   <div className={`w-4 h-4 rounded-full mr-2 ${
-                    aiSummaryData?.category === "High" ? "bg-green-500" :
-                    aiSummaryData?.category === "Low" ? "bg-red-500" : "bg-yellow-500"
+                    rank === "High" ? "bg-green-500" :
+                    rank === "Low" ? "bg-red-500" : "bg-yellow-500"
                   }`}></div>
-                  <p className="font-medium">{aiSummaryData?.category || "N/A"}</p>
+                  <p className="font-medium">{rank || "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -796,7 +783,7 @@ export default function StationDetailPage() {
               <div className="flex flex-col">
                 <p className="text-green-600 font-medium mb-1">Reason :</p>
                 <p className="text-gray-600">
-                  {aiSummaryData?.reason || "No reason provided"}
+                  {reason || "No reason provided"}
                 </p>
               </div>
             </div>

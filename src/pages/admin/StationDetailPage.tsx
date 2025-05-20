@@ -338,41 +338,37 @@ export default function StationDetailPage() {
 
   return (
     <div>
-      <div className="flex items-center mb-5">
-        <div className="flex items-center text-green-500">
-          <svg
-            className="h-6 w-6 mr-2"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M3 9h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M12 3v6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <h1 className="text-xl font-medium">Stations</h1>
+     <div className="mb-5">
+        <div className="flex items-start">
+          <div className="flex items-center text-green-500 mr-2 h-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="40"
+              height="40"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#12e22b"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              className="lucide lucide-fuel-icon lucide-fuel"
+            >
+              <line x1="3" x2="15" y1="22" y2="22" />
+              <line x1="4" x2="14" y1="9" y2="9" />
+              <path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18" />
+              <path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-medium text-green-500 leading-tight">
+              Stations
+            </h1>
+            <p className="text-gray-400 text-sm leading-tight mt-0">
+              Stations management
+            </p>
+          </div>
         </div>
-        <p className="text-gray-400 text-sm ml-2">Stations management</p>
       </div>
-
       <div className="bg-[#F1F7F7] p-6 rounded-lg">
         <Link
           to="/admin/stations"
