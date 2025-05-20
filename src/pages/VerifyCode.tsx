@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useToast } from "@/components/ui/use-toast";
 import VerificationInput from "@/components/auth/VerificationInput";
-import logoImage from '@/assets/logo.png';
+import logoImage from '../assets/logo.png';
+
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
