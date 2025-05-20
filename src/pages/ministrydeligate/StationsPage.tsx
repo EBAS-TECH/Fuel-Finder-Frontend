@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,7 +18,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Eye } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
@@ -30,9 +30,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
-import { format, differenceInHours } from "date-fns";
+import { format, differenceInHours, subMonths, isBefore, isAfter } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface StationReport {
@@ -51,64 +52,102 @@ const DelegateStationsPage = () => {
   const [stations, setStations] = useState<StationReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [startDate, setStartDate] = useState<Date>(new Date(new Date().setMonth(new Date().getMonth() - 3)));
+  const [startDate, setStartDate] = useState<Date>(subMonths(new Date(), 1));
   const [endDate, setEndDate] = useState<Date>(new Date());
-  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [rankFilter, setRankFilter] = useState<string>("all");
   const [filteredStations, setFilteredStations] = useState<StationReport[]>([]);
   const itemsPerPage = 5;
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Calculate total hours in the date range
-  const totalHoursInRange = differenceInHours(endDate, startDate);
+  // Calculate total available hours across all filtered stations
+  const totalAvailableHours = filteredStations.reduce(
+    (sum, station) => sum + Math.floor(station.availaleHour),
+    0
+  );
 
   useEffect(() => {
-    const fetchStations = async () => {
-      try {
-        const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    fetchStations(startDate, endDate);
+  }, []);
 
-        if (!authToken) {
-          throw new Error("No authentication token found");
-        }
+  const fetchStations = async (start: Date, end: Date) => {
+    try {
+      setLoading(true);
+      const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      if (!authToken) throw new Error("No authentication token found");
 
-        const response = await fetch(`${API_BASE_URL}/api/station/report/ministry`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            start_date: startDate.toISOString(),
-            end_date: endDate.toISOString()
-          })
-        });
+      const response = await fetch(`${API_BASE_URL}/api/station/report/ministry`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          start_date: start.toISOString(),
+          end_date: end.toISOString()
+        })
+      });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Failed to fetch stations: ${errorData.message || "Unknown error"}`);
-        }
-
-        const data = await response.json();
-        setStations(data.data);
-        setFilteredStations(data.data); // Initialize filtered stations
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to fetch stations: ${errorData.message || "Unknown error"}`);
       }
-    };
 
-    fetchStations();
-  }, [toast]); // Removed dependencies to fetch only on initial load
+      const data = await response.json();
+      setStations(data.data);
+      applyFilters(data.data, searchQuery, rankFilter);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Apply filters when filter button is clicked
-  const handleFilter = () => {
-    // Check if the date range is valid
-    if (startDate > endDate) {
+  const applyFilters = (dataToFilter: StationReport[], query: string, rank: string) => {
+    let filtered = [...dataToFilter];
+
+    if (query) {
+      filtered = filtered.filter(station =>
+        station.name.toLowerCase().includes(query.toLowerCase()) ||
+        station.tinNumber.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    if (rank !== "all") {
+      filtered = filtered.filter(station => 
+        station.category.toLowerCase() === rank.toLowerCase()
+      );
+    }
+
+    setFilteredStations(filtered);
+    setCurrentPage(1);
+
+    if (filtered.length === 0) {
+      toast({
+        title: "No Data Found",
+        description: "No stations match the current filters.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRankFilterChange = (value: string) => {
+    setRankFilter(value);
+    applyFilters(stations, searchQuery, value);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    applyFilters(stations, query, rankFilter);
+  };
+
+  const handleFilter = async () => {
+    if (isAfter(startDate, endDate)) {
       toast({
         title: "Invalid Date Range",
         description: "The start date must be before the end date.",
@@ -117,41 +156,43 @@ const DelegateStationsPage = () => {
       return;
     }
 
-    const filtered = stations.filter(station => {
-      const matchesSearch =
-        station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        station.tinNumber.toLowerCase().includes(searchQuery.toLowerCase());
-
-      if (ratingFilter === "all") return matchesSearch;
-
-      const stationRating = Math.floor(station.rating);
-      return matchesSearch && stationRating.toString() === ratingFilter;
-    });
-
-    if (filtered.length === 0) {
+    if (isAfter(endDate, new Date())) {
       toast({
-        title: "No Data Found",
-        description: "No stations found for the specified date range.",
+        title: "Invalid End Date",
+        description: "End date cannot be in the future.",
         variant: "destructive"
       });
       return;
     }
 
-    setFilteredStations(filtered);
-    setCurrentPage(1);
+    await fetchStations(startDate, endDate);
+    
     toast({
       title: "Filter Applied",
-      description: `Showing ${filtered.length} stations matching your criteria`,
+      description: `Showing data from ${format(startDate, 'MMM dd, yyyy')} to ${format(endDate, 'MMM dd, yyyy')}`,
     });
   };
 
-  // Pagination logic
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleFilter();
+    }
+  };
+
+  const navigateToDetail = (station: StationReport) => {
+    navigate(`/ministry-delegate/stations/${station.stationId}`, {
+      state: {
+        rank: station.category,
+        reason: station.reason
+      }
+    });
+  };
+
   const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentStations = filteredStations.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Render stars based on rating
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -159,39 +200,26 @@ const DelegateStationsPage = () => {
 
     for (let i = 1; i <= 5; i++) {
       if (i <= fullStars) {
-        stars.push(
-          <span key={i} className="text-yellow-500 fill-current">★</span>
-        );
+        stars.push(<span key={i} className="text-yellow-500 fill-current">★</span>);
       } else if (i === fullStars + 1 && hasHalfStar) {
-        stars.push(
-          <span key={i} className="text-yellow-500 fill-current">½</span>
-        );
+        stars.push(<span key={i} className="text-yellow-500 fill-current">½</span>);
       } else {
-        stars.push(
-          <span key={i} className="text-gray-300">★</span>
-        );
+        stars.push(<span key={i} className="text-gray-300">★</span>);
       }
     }
 
     return <div className="flex">{stars}</div>;
   };
 
-  // Get color for AI summary
   const getSummaryColor = (summary: string) => {
     switch (summary.toLowerCase()) {
-      case "low":
-        return { bg: "bg-red-500", text: "text-red-500" };
-      case "medium":
-      case "average":
-        return { bg: "bg-yellow-500", text: "text-yellow-500" };
-      case "high":
-        return { bg: "bg-green-500", text: "text-green-500" };
-      default:
-        return { bg: "bg-gray-500", text: "text-gray-500" };
+      case "low": return { bg: "bg-red-500", text: "text-red-500" };
+      case "average": return { bg: "bg-yellow-500", text: "text-yellow-500" };
+      case "high": return { bg: "bg-green-500", text: "text-green-500" };
+      default: return { bg: "bg-gray-500", text: "text-gray-500" };
     }
   };
 
-  // Render AI summary with appropriate color
   const renderAISummary = (summary: string) => {
     const color = getSummaryColor(summary);
     return (
@@ -207,6 +235,15 @@ const DelegateStationsPage = () => {
   };
 
   const exportToPDF = () => {
+    if (filteredStations.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "There are no stations to export with the current filters.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Preparing PDF",
       description: "Generating your report, please wait...",
@@ -218,102 +255,77 @@ const DelegateStationsPage = () => {
       format: "a4"
     });
 
-    // Add title and header with dark green theme
     doc.setFontSize(18);
-    doc.setTextColor(22, 101, 52); // green-800
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
     doc.text('Fuel Stations Performance Report', 105, 20, { align: 'center' });
 
     doc.setFontSize(11);
-    doc.setTextColor(71, 85, 105); // slate-600
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
     doc.text(`Date Range: ${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`, 14, 30);
-    doc.text(`Total Hours in Range: ${totalHoursInRange} hours`, 14, 37);
+    doc.text(`Total Available Hours: ${totalAvailableHours}`, 14, 37);
 
-    // Prepare data for the table
+    if (rankFilter !== "all") {
+      doc.text(`AI Rank Filter: ${rankFilter}`, 14, 44);
+    }
+
     const tableData = filteredStations.map(station => [
       station.name,
       station.tinNumber,
       station.rating.toFixed(1),
       Math.floor(station.availaleHour),
-      station.category
+      station.category,
+      station.reason
     ]);
 
-    // Add table with light green theme
     autoTable(doc, {
       head: [
         [
-          { content: 'Station Name', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
-          { content: 'TIN Number', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
-          { content: 'Rating', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } },
-          { content: 'Available Hours', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } },
-          { content: 'AI Summary', styles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' } }
+          { content: 'Station Name', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
+          { content: 'TIN Number', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
+          { content: 'Rating', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold' } },
+          { content: 'Available Hours', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold' } },
+          { content: 'AI Rank', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold' } },
+          { content: 'Reason', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } }
         ]
       ],
       body: tableData,
-      startY: 45,
+      startY: rankFilter !== "all" ? 50 : 44,
       styles: {
         cellPadding: 3,
         fontSize: 9,
         valign: 'middle',
-        textColor: [15, 23, 42],
+        textColor: [0, 0, 0],
         font: "helvetica",
         fillColor: [255, 255, 255]
       },
       headStyles: {
-        fillColor: [16, 185, 129], // green-500
+        fillColor: [51, 51, 51],
         textColor: [255, 255, 255],
         fontStyle: 'bold'
       },
       columnStyles: {
-        0: { halign: 'left', cellWidth: 50 },
-        1: { halign: 'left', cellWidth: 35 },
-        2: { cellWidth: 20, halign: 'center' },
-        3: { cellWidth: 25, halign: 'center' },
-        4: { cellWidth: 25, halign: 'center' }
-      },
-      didDrawCell: (data) => {
-        if (data.section === 'body' && data.column.index === 4) {
-          const value = data.cell.raw as string;
-          const color = getSummaryColor(value);
-
-          let rgbColor: [number, number, number] = [100, 116, 139]; // default gray
-          if (color.text === "text-red-500") rgbColor = [239, 68, 68];
-          else if (color.text === "text-yellow-500") rgbColor = [234, 179, 8];
-          else if (color.text === "text-green-500") rgbColor = [34, 197, 94];
-
-          doc.setTextColor(rgbColor[0], rgbColor[1], rgbColor[2]);
-
-          doc.text(
-            value,
-            data.cell.x + data.cell.width / 2,
-            data.cell.y + data.cell.height / 2 + 2,
-            { align: 'center', baseline: 'middle' }
-          );
-
-          return false;
-        }
+        0: { halign: 'left', cellWidth: 40 },
+        1: { halign: 'left', cellWidth: 30 },
+        2: { cellWidth: 15, halign: 'center' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 20, halign: 'center' },
+        5: { halign: 'left', cellWidth: 45 }
       },
       willDrawCell: (data) => {
         if (data.section === 'body' && data.row.index % 2 === 0) {
-          doc.setFillColor(240, 253, 244);
-          doc.rect(
-            data.cell.x,
-            data.cell.y,
-            data.cell.width,
-            data.cell.height,
-            'F'
-          );
+          doc.setFillColor(240, 240, 240);
+          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
         }
       }
     });
 
-    // Add footer
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
+      doc.setTextColor(0, 0, 0);
       doc.text(
         `Page ${i} of ${pageCount}`,
         doc.internal.pageSize.width - 20,
@@ -328,7 +340,6 @@ const DelegateStationsPage = () => {
       );
     }
 
-    // Save the PDF
     doc.save(`Fuel_Stations_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 
     toast({
@@ -361,7 +372,8 @@ const DelegateStationsPage = () => {
             <Input
               placeholder="Search station"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
+              onKeyPress={handleKeyPress}
               className="pl-10 bg-[#F2FCE2] border-none rounded-full focus:ring-green-500"
             />
             <div className="absolute inset-y-0 left-3 flex items-center">
@@ -372,17 +384,18 @@ const DelegateStationsPage = () => {
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            <Select value={ratingFilter} onValueChange={setRatingFilter}>
+            <Select 
+              value={rankFilter} 
+              onValueChange={handleRankFilterChange}
+            >
               <SelectTrigger className="w-[180px] bg-white border text-gray-700">
-                <SelectValue placeholder="Filter by rating" />
+                <SelectValue placeholder="Filter by AI rank" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Ratings</SelectItem>
-                <SelectItem value="1">1 Star</SelectItem>
-                <SelectItem value="2">2 Stars</SelectItem>
-                <SelectItem value="3">3 Stars</SelectItem>
-                <SelectItem value="4">4 Stars</SelectItem>
-                <SelectItem value="5">5 Stars</SelectItem>
+                <SelectItem value="all">All Ranks</SelectItem>
+                <SelectItem value="low">Low Rank</SelectItem>
+                <SelectItem value="average">Average Rank</SelectItem>
+                <SelectItem value="high">High Rank</SelectItem>
               </SelectContent>
             </Select>
 
@@ -400,7 +413,9 @@ const DelegateStationsPage = () => {
                 <Calendar
                   mode="single"
                   selected={startDate}
-                  onSelect={(date) => date && setStartDate(date)}
+                  onSelect={(date) => {
+                    if (date) setStartDate(date);
+                  }}
                   initialFocus
                 />
               </PopoverContent>
@@ -420,7 +435,9 @@ const DelegateStationsPage = () => {
                 <Calendar
                   mode="single"
                   selected={endDate}
-                  onSelect={(date) => date && setEndDate(date)}
+                  onSelect={(date) => {
+                    if (date) setEndDate(date);
+                  }}
                   initialFocus
                 />
               </PopoverContent>
@@ -451,7 +468,7 @@ const DelegateStationsPage = () => {
                 <TableHead className="text-white text-left">TIN Number</TableHead>
                 <TableHead className="text-white text-center">Rating</TableHead>
                 <TableHead className="text-white text-center">Available Hours</TableHead>
-                <TableHead className="text-white text-center">AI Summary</TableHead>
+                <TableHead className="text-white text-center">AI Rank</TableHead>
                 <TableHead className="text-white text-left">Details</TableHead>
               </TableRow>
             </TableHeader>
@@ -492,7 +509,7 @@ const DelegateStationsPage = () => {
                         variant="ghost"
                         size="sm"
                         className="text-green-500 p-0"
-                        onClick={() => navigate(`/ministry-delegate/stations/${station.stationId}`)}
+                        onClick={() => navigateToDetail(station)}
                       >
                         <Eye className="h-5 w-5" />
                       </Button>
@@ -502,7 +519,7 @@ const DelegateStationsPage = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
-                    No stations found
+                    No stations found matching your filters
                   </TableCell>
                 </TableRow>
               )}

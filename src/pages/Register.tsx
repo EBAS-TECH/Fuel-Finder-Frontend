@@ -15,6 +15,9 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [validatingTin, setValidatingTin] = useState(false);
+  const [tinValidated, setTinValidated] = useState(false);
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -30,12 +33,91 @@ const Register = () => {
     confirmPassword: "",
   });
 
+  const [autoFilledFields, setAutoFilledFields] = useState<Record<string, boolean>>({});
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+  };
+
+  const validateTinNumber = async () => {
+    if (!formData.tinNumber) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a TIN number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setValidatingTin(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/station/validate-tin/${formData.tinNumber}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Invalid TIN number or station not registered with ministry");
+      }
+
+      const data = await response.json();
+      
+      const receivedFields: Record<string, boolean> = {};
+      const newFormData = { ...formData };
+
+      if (data.stationName) {
+        newFormData.stationName = data.stationName;
+        receivedFields.stationName = true;
+      }
+      if (data.amharicName) {
+        newFormData.amharicName = data.amharicName;
+        receivedFields.amharicName = true;
+      }
+      if (data.latitude) {
+        newFormData.stationLatitude = data.latitude;
+        receivedFields.stationLatitude = true;
+      }
+      if (data.longitude) {
+        newFormData.stationLongitude = data.longitude;
+        receivedFields.stationLongitude = true;
+      }
+      if (data.address) {
+        newFormData.stationAddress = data.address;
+        receivedFields.stationAddress = true;
+      }
+
+      setFormData(newFormData);
+      setAutoFilledFields(receivedFields);
+      setTinValidated(true);
+      
+      toast({
+        title: "TIN Validated",
+        description: "Station information retrieved. Please complete the registration form.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Validation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setValidatingTin(false);
+    }
+  };
+
+  const isFieldDisabled = (fieldName: string) => {
+    if (userType !== "stations") return false;
+    if (!tinValidated) return true;
+    return autoFilledFields[fieldName];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,10 +166,11 @@ const Register = () => {
         }
 
         userId = data.data.id;
-        if (!userId) {
-          throw new Error("User ID not found in driver response");
-        }
       } else {
+        if (!tinValidated) {
+          throw new Error("Please validate your TIN number first");
+        }
+
         const stationData = {
           user: {
             first_name: formData.firstName,
@@ -123,13 +206,10 @@ const Register = () => {
         }
 
         userId = data.data?.user?.id;
-        if (!userId) {
-          throw new Error("User ID not found in station response");
-        }
       }
 
       localStorage.setItem("tempUserEmail", formData.email);
-      localStorage.setItem("tempUserId", userId);
+      localStorage.setItem("tempUserId", userId || "");
 
       toast({
         title: "Registration successful!",
@@ -156,13 +236,18 @@ const Register = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  const handleUserTypeChange = (type: UserType) => {
+    setUserType(type);
+    setTinValidated(false);
+    setAutoFilledFields({});
+  };
+
   return (
     <div className="min-h-screen bg-fuelGreen-50 flex">
       {/* Left side - Fixed Logo area */}
       <div className="hidden md:flex md:w-1/2 bg-fuelGreen-50 p-8 flex-col items-center justify-center sticky top-0 h-screen">
         <div className="flex flex-col items-center max-w-md">
-          {/* Fixed Logo */}
-         <div className="mb-12 scale-150">
+          <div className="mb-12 scale-150">
             <img
               src={logoImage}
               alt="Fuel Finder Logo"
@@ -234,7 +319,7 @@ const Register = () => {
                     ? "bg-fuelGreen-500 text-white border-b-2 border-fuelGreen-500"
                     : "bg-white text-gray-500 hover:bg-fuelGreen-50"
                 }`}
-                onClick={() => setUserType("drivers")}
+                onClick={() => handleUserTypeChange("drivers")}
               >
                 Drivers
               </button>
@@ -244,7 +329,7 @@ const Register = () => {
                     ? "bg-fuelGreen-500 text-white border-b-2 border-fuelGreen-500"
                     : "bg-white text-gray-500 hover:bg-fuelGreen-50"
                 }`}
-                onClick={() => setUserType("stations")}
+                onClick={() => handleUserTypeChange("stations")}
               >
                 Gas Station
               </button>
@@ -273,6 +358,7 @@ const Register = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                       placeholder="John"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -287,6 +373,7 @@ const Register = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                       placeholder="Doe"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
@@ -303,6 +390,7 @@ const Register = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                     placeholder="johndoe123"
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -318,11 +406,44 @@ const Register = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                     placeholder="john@example.com"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </>
             ) : (
               <>
+                {/* TIN Number Field */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    TIN Number (10 digits)*
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="tinNumber"
+                      value={formData.tinNumber}
+                      onChange={handleChange}
+                      pattern="\d{10}"
+                      title="10 digit TIN number"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                      placeholder="1234567890"
+                      required
+                      disabled={tinValidated || validatingTin || isLoading}
+                    />
+                    {!tinValidated && (
+                      <Button
+                        type="button"
+                        onClick={validateTinNumber}
+                        disabled={validatingTin || isLoading}
+                        className="bg-fuelGreen-500 hover:bg-fuelGreen-600"
+                      >
+                        {validatingTin ? "Validating..." : "Validate"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Personal Info Fields */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -336,6 +457,7 @@ const Register = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                       placeholder="Manager's first name"
                       required
+                      disabled={isLoading || !tinValidated}
                     />
                   </div>
                   <div>
@@ -350,6 +472,7 @@ const Register = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                       placeholder="Manager's last name"
                       required
+                      disabled={isLoading || !tinValidated}
                     />
                   </div>
                 </div>
@@ -366,6 +489,7 @@ const Register = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                     placeholder="station_username"
                     required
+                    disabled={isLoading || !tinValidated}
                   />
                 </div>
 
@@ -381,9 +505,11 @@ const Register = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                     placeholder="station@example.com"
                     required
+                    disabled={isLoading || !tinValidated}
                   />
                 </div>
 
+                {/* Station Info Fields */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Station Name (English)*
@@ -393,9 +519,12 @@ const Register = () => {
                     name="stationName"
                     value={formData.stationName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                    className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500 ${
+                      isFieldDisabled("stationName") ? "bg-gray-100" : ""
+                    }`}
                     placeholder="City Gas Station"
                     required
+                    disabled={isLoading || isFieldDisabled("stationName")}
                   />
                 </div>
 
@@ -408,25 +537,11 @@ const Register = () => {
                     name="amharicName"
                     value={formData.amharicName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                    className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500 ${
+                      isFieldDisabled("amharicName") ? "bg-gray-100" : ""
+                    }`}
                     placeholder="የከተማ ጋዝ ጣቢያ"
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    TIN Number (10 digits)*
-                  </label>
-                  <input
-                    type="text"
-                    name="tinNumber"
-                    value={formData.tinNumber}
-                    onChange={handleChange}
-                    pattern="\d{10}"
-                    title="10 digit TIN number"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
-                    placeholder="1234567890"
-                    required
+                    disabled={isLoading || isFieldDisabled("amharicName")}
                   />
                 </div>
 
@@ -441,9 +556,12 @@ const Register = () => {
                       name="stationLatitude"
                       value={formData.stationLatitude}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500 ${
+                        isFieldDisabled("stationLatitude") ? "bg-gray-100" : ""
+                      }`}
                       placeholder="9.1234"
                       required
+                      disabled={isLoading || isFieldDisabled("stationLatitude")}
                     />
                   </div>
                   <div>
@@ -456,9 +574,12 @@ const Register = () => {
                       name="stationLongitude"
                       value={formData.stationLongitude}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                      className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500 ${
+                        isFieldDisabled("stationLongitude") ? "bg-gray-100" : ""
+                      }`}
                       placeholder="38.5678"
                       required
+                      disabled={isLoading || isFieldDisabled("stationLongitude")}
                     />
                   </div>
                 </div>
@@ -472,9 +593,12 @@ const Register = () => {
                     name="stationAddress"
                     value={formData.stationAddress}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                    className={`w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500 ${
+                      isFieldDisabled("stationAddress") ? "bg-gray-100" : ""
+                    }`}
                     placeholder="123 Main St, Addis Ababa"
                     required
+                    disabled={isLoading || isFieldDisabled("stationAddress")}
                   />
                 </div>
               </>
@@ -494,11 +618,13 @@ const Register = () => {
                   placeholder="At least 8 characters"
                   minLength={8}
                   required
+                  disabled={isLoading || (userType === "stations" && !tinValidated)}
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2"
                   onClick={togglePasswordVisibility}
+                  disabled={isLoading || (userType === "stations" && !tinValidated)}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400" />
@@ -523,11 +649,13 @@ const Register = () => {
                   placeholder="Confirm your password"
                   minLength={8}
                   required
+                  disabled={isLoading || (userType === "stations" && !tinValidated)}
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2"
                   onClick={toggleConfirmPasswordVisibility}
+                  disabled={isLoading || (userType === "stations" && !tinValidated)}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400" />
@@ -541,7 +669,7 @@ const Register = () => {
             <PrimaryButton
               type="submit"
               className="w-full py-6 font-medium"
-              disabled={isLoading}
+              disabled={isLoading || (userType === "stations" && !tinValidated)}
             >
               {isLoading ? "Registering..." : "Register"}
             </PrimaryButton>

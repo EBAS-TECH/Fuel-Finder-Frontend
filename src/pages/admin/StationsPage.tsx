@@ -361,90 +361,86 @@ export default function StationsPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center mb-5">
-        <div className="flex items-center text-green-500">
-          <svg
-            className="h-6 w-6 mr-2"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M3 9h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M12 3v6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <h1 className="text-xl font-medium">Stations</h1>
+      <div className="mb-5">
+        <div className="flex items-start">
+          <div className="flex items-center text-green-500 mr-2 h-full">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="40"
+              height="40"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#12e22b"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              className="lucide lucide-fuel-icon lucide-fuel"
+            >
+              <line x1="3" x2="15" y1="22" y2="22" />
+              <line x1="4" x2="14" y1="9" y2="9" />
+              <path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18" />
+              <path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-medium text-green-500 leading-tight">
+              Stations
+            </h1>
+            <p className="text-gray-400 text-sm leading-tight mt-0">
+              Stations management
+            </p>
+          </div>
         </div>
-        <p className="text-gray-400 text-sm ml-2">Stations management</p>
       </div>
-
       <div className="bg-[#F1F7F7] p-6 rounded-lg">
-        <Tabs
-          defaultValue="PENDING"
-          className="mb-5"
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(value as "PENDING" | "VERIFIED" | "NOT-VERIFIED")
-          }
-        >
-          <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
-            <TabsTrigger
-              value="PENDING"
-              className={`bg-white border ${
-                activeTab === "PENDING"
-                  ? "border-green-500 text-green-500"
-                  : "border-transparent"
-              } rounded-lg shadow-sm`}
-            >
-              Pending
-            </TabsTrigger>
-            <TabsTrigger
-              value="VERIFIED"
-              className={`bg-white border ${
-                activeTab === "VERIFIED"
-                  ? "border-green-500 text-green-500"
-                  : "border-transparent"
-              } rounded-lg shadow-sm`}
-            >
-              Approved
-            </TabsTrigger>
-            <TabsTrigger
-              value="NOT-VERIFIED"
-              className={`bg-white border ${
-                activeTab === "NOT-VERIFIED"
-                  ? "border-green-500 text-green-500"
-                  : "border-transparent"
-              } rounded-lg shadow-sm`}
-            >
-              Rejected
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        
+        <div className="flex justify-between items-center mb-5">
+  <Tabs
+    defaultValue="PENDING"
+    value={activeTab}
+    onValueChange={(value) =>
+      setActiveTab(value as "PENDING" | "VERIFIED" | "NOT-VERIFIED")
+    }
+  >
+    <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
+      <TabsTrigger
+        value="PENDING"
+        className={`bg-white border ${
+          activeTab === "PENDING"
+            ? "border-green-500 text-green-500"
+            : "border-transparent"
+        } rounded-lg shadow-sm`}
+      >
+        Pending
+      </TabsTrigger>
+      <TabsTrigger
+        value="VERIFIED"
+        className={`bg-white border ${
+          activeTab === "VERIFIED"
+            ? "border-green-500 text-green-500"
+            : "border-transparent"
+        } rounded-lg shadow-sm`}
+      >
+        Approved
+      </TabsTrigger>
+      <TabsTrigger
+        value="NOT-VERIFIED"
+        className={`bg-white border ${
+          activeTab === "NOT-VERIFIED"
+            ? "border-green-500 text-green-500"
+            : "border-transparent"
+        } rounded-lg shadow-sm`}
+      >
+        Rejected
+      </TabsTrigger>
+    </TabsList>
+  </Tabs>
 
-       <div className="flex justify-end w-full mb-5">
   <div className="w-72 relative">
     <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
     <Input
       placeholder="Search station"
-      className="pl-10 bg-white border-none rounded-full h-10 w-full"
+    className="pl-10 bg-white border-none rounded-[12px] h-10 w-full"
       value={searchTerm}
       onChange={(e) => setSearchTerm(e.target.value)}
     />

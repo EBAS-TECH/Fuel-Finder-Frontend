@@ -19,8 +19,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -31,6 +31,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Color palette
@@ -108,6 +109,7 @@ export default function DashboardPage() {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
+
         const availabilityData = await availabilityResponse.json();
 
         // Process availability data - only include available fuels
@@ -133,8 +135,8 @@ export default function DashboardPage() {
     fetchData();
   }, [navigate]);
 
-  // Prepare data for line chart - only available fuels
-  const lineChartData = fuelAvailability.map((item) => ({
+  // Prepare data for bar chart - only available fuels
+  const barChartData = fuelAvailability.map((item) => ({
     name: item.fuel_type,
     hours: item.availability_duration,
     color: item.color,
@@ -294,7 +296,7 @@ export default function DashboardPage() {
           {/* Charts Section - Only shown if there's available fuel */}
           {fuelAvailability.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Fuel Availability Line Chart */}
+              {/* Fuel Availability Bar Chart */}
               <Card className="border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-gray-800">
@@ -311,8 +313,8 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={lineChartData}
+                      <BarChart
+                        data={barChartData}
                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -339,16 +341,16 @@ export default function DashboardPage() {
                           ]}
                         />
                         <Legend />
-                        <Line
-                          type="monotone"
+                        <Bar
                           dataKey="hours"
                           name="Availability (Hours)"
-                          stroke={COLORS.primary}
-                          strokeWidth={2}
-                          activeDot={{ r: 6 }}
-                          dot={{ r: 4 }}
-                        />
-                      </LineChart>
+                          radius={[4, 4, 0, 0]}
+                        >
+                          {barChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>

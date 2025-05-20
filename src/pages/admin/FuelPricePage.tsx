@@ -274,23 +274,24 @@ export default function FuelPricePage() {
       </div>
 
       <div className="bg-[#F1F7F7] p-6 rounded-lg">
-        <div className="flex justify-between items-center mb-4">
-          <div className="relative w-full max-w-md">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search fuel type"
-              className="pl-10 bg-white border-none focus:ring-green-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <Button
-            onClick={handleAddFuelPrice}
-            className="bg-green-500 hover:bg-green-600 text-white"
-          >
-            Add Fuel Type
-          </Button>
-        </div>
+        <div className="flex justify-end items-center mb-4 gap-4">
+  <div className="relative w-64">
+    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <Input
+      placeholder="Search fuel type"
+      className="pl-10 bg-white border rounded-lg h-9 focus:ring-green-500"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+    />
+  </div>
+  
+  <Button
+    onClick={handleAddFuelPrice}
+    className="bg-green-500 hover:bg-green-600 text-white whitespace-nowrap border border-green-500 rounded-lg shadow-sm"
+  >
+    Add Fuel Type
+  </Button>
+</div>
 
         <div className="bg-white rounded-lg overflow-hidden">
           <Table>

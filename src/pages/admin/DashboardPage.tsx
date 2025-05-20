@@ -9,6 +9,7 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
+  Fuel,
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { useToast } from "@/components/ui/use-toast";
@@ -229,7 +230,7 @@ export default function DashboardPage() {
                 active={pathName.includes("/admin/drivers")}
               />
               <SidebarItem
-                icon={<Users className="h-5 w-5" />}
+                icon={<Fuel className="h-5 w-5" />}
                 label="Stations"
                 to="/admin/stations"
                 active={pathName.includes("/admin/stations")}
