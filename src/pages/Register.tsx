@@ -12,7 +12,6 @@ type UserType = "drivers" | "stations";
 interface StationValidationResponse {
   first_name?: string;
   last_name?: string;
-  // Add other fields if they exist in the response
 }
 
 const Register = () => {
@@ -135,8 +134,39 @@ const Register = () => {
       let userId: string;
 
       if (userType === "drivers") {
-        // ... driver registration logic ...
+        // Keep driver registration exactly the same
+        const driverData = {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          username: formData.username,
+          password: formData.password,
+          email: formData.email,
+          role: "DRIVER",
+        };
+
+        response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(driverData),
+        });
+
+        data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 409) {
+            throw new Error("Username or email already exists");
+          }
+          throw new Error(data.message || "Driver registration failed");
+        }
+
+        userId = data.data.id;
+        if (!userId) {
+          throw new Error("User ID not found in driver response");
+        }
       } else {
+        // Modified station registration with TIN validation
         if (!tinValidated) {
           throw new Error("Please validate your TIN number first");
         }
@@ -176,10 +206,13 @@ const Register = () => {
         }
 
         userId = data.data?.user?.id;
+        if (!userId) {
+          throw new Error("User ID not found in station response");
+        }
       }
 
       localStorage.setItem("tempUserEmail", formData.email);
-      localStorage.setItem("tempUserId", userId || "");
+      localStorage.setItem("tempUserId", userId);
 
       toast({
         title: "Registration successful!",
@@ -330,10 +363,71 @@ const Register = () => {
           <form onSubmit={handleSubmit}>
             {userType === "drivers" ? (
               <>
-                {/* Driver registration form remains unchanged */}
+                {/* Driver form remains exactly the same */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name*
+                    </label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                      placeholder="John"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name*
+                    </label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                      placeholder="Doe"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Username*
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                    placeholder="johndoe123"
+                    required
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email*
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
+                    placeholder="john@example.com"
+                    required
+                  />
+                </div>
               </>
             ) : (
               <>
+                {/* Modified gas station form with TIN validation */}
                 {/* TIN Number Field - Always first and editable */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
