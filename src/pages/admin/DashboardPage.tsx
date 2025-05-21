@@ -11,7 +11,7 @@ import {
   ChevronUp,
   Fuel,
 } from "lucide-react";
-import logoImage from "@/assets/logo.png";
+import logoImage from "../../assets/logo.png";
 import { useToast } from "@/components/ui/use-toast";
 import {
   DropdownMenu,

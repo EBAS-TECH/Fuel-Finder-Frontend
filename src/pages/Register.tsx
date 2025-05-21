@@ -17,13 +17,13 @@ interface StationValidationResponse {
 const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [userType, setUserType] = useState<UserType>("drivers");
+  const [userType, setUserType] = useState<UserType>("stations");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validatingTin, setValidatingTin] = useState(false);
   const [tinValidated, setTinValidated] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -39,7 +39,13 @@ const Register = () => {
     confirmPassword: "",
   });
 
-  const [autoFilledFields, setAutoFilledFields] = useState<Record<string, boolean>>({});
+  const [autoFilledFields, setAutoFilledFields] = useState<
+    Record<string, boolean>
+  >({});
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    message: string;
+  }>({ score: 0, message: "" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,6 +53,56 @@ const Register = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Check password strength when password field changes
+    if (name === "password") {
+      checkPasswordStrength(value);
+    }
+  };
+
+  const checkPasswordStrength = (password: string) => {
+    // Reset if empty
+    if (!password) {
+      setPasswordStrength({ score: 0, message: "" });
+      return;
+    }
+
+    // Initialize variables
+    let score = 0;
+    let messages: string[] = [];
+
+    // Check length
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+
+    // Check for uppercase letters
+    if (/[A-Z]/.test(password)) score++;
+    else messages.push("at least one uppercase letter");
+
+    // Check for lowercase letters
+    if (/[a-z]/.test(password)) score++;
+    else messages.push("at least one lowercase letter");
+
+    // Check for numbers
+    if (/\d/.test(password)) score++;
+    else messages.push("at least one number");
+
+    // Check for special characters
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    else messages.push("at least one special character");
+
+    // Determine strength message
+    let message = "";
+    if (score >= 5) message = "Strong password";
+    else if (score >= 3) message = "Medium password";
+    else if (score > 0) message = "Weak password";
+    else message = "Very weak password";
+
+    if (messages.length > 0 && score < 5) {
+      message += ` - needs ${messages.join(", ")}`;
+    }
+
+    setPasswordStrength({ score, message });
   };
 
   const validateTinNumber = async () => {
@@ -72,11 +128,13 @@ const Register = () => {
       );
 
       if (!response.ok) {
-        throw new Error("Invalid TIN number or station not registered with ministry");
+        throw new Error(
+          "Invalid TIN number or station not registered with ministry"
+        );
       }
 
       const data: StationValidationResponse = await response.json();
-      
+
       const filledFields: Record<string, boolean> = {};
       const updatedFormData = { ...formData };
 
@@ -93,10 +151,11 @@ const Register = () => {
       setFormData(updatedFormData);
       setAutoFilledFields(filledFields);
       setTinValidated(true);
-      
+
       toast({
         title: "TIN Validated",
-        description: "Station information retrieved. Please complete the registration form.",
+        description:
+          "Station information retrieved. Please complete the registration form.",
       });
     } catch (error: any) {
       toast({
@@ -118,6 +177,17 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Password strength validation
+    if (passwordStrength.score < 3) {
+      toast({
+        title: "Weak Password",
+        description:
+          "Please choose a stronger password. " + passwordStrength.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -134,7 +204,6 @@ const Register = () => {
       let userId: string;
 
       if (userType === "drivers") {
-        // Keep driver registration exactly the same
         const driverData = {
           first_name: formData.firstName,
           last_name: formData.lastName,
@@ -166,7 +235,6 @@ const Register = () => {
           throw new Error("User ID not found in driver response");
         }
       } else {
-        // Modified station registration with TIN validation
         if (!tinValidated) {
           throw new Error("Please validate your TIN number first");
         }
@@ -243,7 +311,6 @@ const Register = () => {
     setUserType(type);
     setTinValidated(false);
     setAutoFilledFields({});
-    // Reset form data when switching user types
     setFormData({
       firstName: "",
       lastName: "",
@@ -258,6 +325,15 @@ const Register = () => {
       email: "",
       confirmPassword: "",
     });
+    setPasswordStrength({ score: 0, message: "" });
+  };
+
+  // Password strength color indicator
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength.score >= 5) return "bg-green-500";
+    if (passwordStrength.score >= 3) return "bg-yellow-500";
+    if (passwordStrength.score > 0) return "bg-orange-500";
+    return "bg-red-500";
   };
 
   return (
@@ -333,16 +409,6 @@ const Register = () => {
             <div className="flex border rounded-lg overflow-hidden">
               <button
                 className={`w-1/2 py-2 font-medium text-sm ${
-                  userType === "drivers"
-                    ? "bg-fuelGreen-500 text-white border-b-2 border-fuelGreen-500"
-                    : "bg-white text-gray-500 hover:bg-fuelGreen-50"
-                }`}
-                onClick={() => handleUserTypeChange("drivers")}
-              >
-                Drivers
-              </button>
-              <button
-                className={`w-1/2 py-2 font-medium text-sm ${
                   userType === "stations"
                     ? "bg-fuelGreen-500 text-white border-b-2 border-fuelGreen-500"
                     : "bg-white text-gray-500 hover:bg-fuelGreen-50"
@@ -350,6 +416,16 @@ const Register = () => {
                 onClick={() => handleUserTypeChange("stations")}
               >
                 Gas Station
+              </button>
+              <button
+                className={`w-1/2 py-2 font-medium text-sm ${
+                  userType === "drivers"
+                    ? "bg-fuelGreen-500 text-white border-b-2 border-fuelGreen-500"
+                    : "bg-white text-gray-500 hover:bg-fuelGreen-50"
+                }`}
+                onClick={() => handleUserTypeChange("drivers")}
+              >
+                Drivers
               </button>
             </div>
           </div>
@@ -471,7 +547,7 @@ const Register = () => {
                       value={formData.firstName}
                       onChange={handleChange}
                       className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        isFieldDisabled("firstName") 
+                        isFieldDisabled("firstName")
                           ? "bg-gray-100 border-gray-200 text-gray-600 focus:ring-gray-300"
                           : "border-gray-300 focus:ring-fuelGreen-500"
                       }`}
@@ -490,7 +566,7 @@ const Register = () => {
                       value={formData.lastName}
                       onChange={handleChange}
                       className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        isFieldDisabled("lastName") 
+                        isFieldDisabled("lastName")
                           ? "bg-gray-100 border-gray-200 text-gray-600 focus:ring-gray-300"
                           : "border-gray-300 focus:ring-fuelGreen-500"
                       }`}
@@ -633,13 +709,17 @@ const Register = () => {
                   placeholder="At least 8 characters"
                   minLength={8}
                   required
-                  disabled={isLoading || (userType === "stations" && !tinValidated)}
+                  disabled={
+                    isLoading || (userType === "stations" && !tinValidated)
+                  }
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2"
                   onClick={togglePasswordVisibility}
-                  disabled={isLoading || (userType === "stations" && !tinValidated)}
+                  disabled={
+                    isLoading || (userType === "stations" && !tinValidated)
+                  }
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400" />
@@ -648,6 +728,31 @@ const Register = () => {
                   )}
                 </button>
               </div>
+              {formData.password && (
+                <div className="mt-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getPasswordStrengthColor()}`}
+                      style={{
+                        width: `${(passwordStrength.score / 5) * 100}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <p
+                    className={`text-xs mt-1 ${
+                      passwordStrength.score >= 5
+                        ? "text-green-600"
+                        : passwordStrength.score >= 3
+                        ? "text-yellow-600"
+                        : passwordStrength.score > 0
+                        ? "text-orange-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {passwordStrength.message}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="mb-6">
@@ -664,13 +769,17 @@ const Register = () => {
                   placeholder="Confirm your password"
                   minLength={8}
                   required
-                  disabled={isLoading || (userType === "stations" && !tinValidated)}
+                  disabled={
+                    isLoading || (userType === "stations" && !tinValidated)
+                  }
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2"
                   onClick={toggleConfirmPasswordVisibility}
-                  disabled={isLoading || (userType === "stations" && !tinValidated)}
+                  disabled={
+                    isLoading || (userType === "stations" && !tinValidated)
+                  }
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400" />
@@ -684,7 +793,11 @@ const Register = () => {
             <PrimaryButton
               type="submit"
               className="w-full py-6 font-medium"
-              disabled={isLoading || (userType === "stations" && !tinValidated)}
+              disabled={
+                isLoading ||
+                (userType === "stations" && !tinValidated) ||
+                passwordStrength.score < 3
+              }
             >
               {isLoading ? "Registering..." : "Register"}
             </PrimaryButton>
