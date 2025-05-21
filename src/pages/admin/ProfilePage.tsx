@@ -48,24 +48,50 @@ export default function ProfilePage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
-    const loadUserData = () => {
+    const loadUserData = async () => {
       try {
-        // Check both storage locations
-        const storedUser =
-          localStorage.getItem("userData") ||
-          sessionStorage.getItem("userData");
-
-        if (!storedUser) {
-          throw new Error("No user data found");
-        }
-
-        const parsedUser = JSON.parse(storedUser);
-        setUserData(parsedUser);
-        setEditedUser({
-          firstName: parsedUser.first_name,
-          lastName: parsedUser.last_name,
-          username: parsedUser.username,
+        // First try to get fresh data from the server
+        const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+          headers: {
+            Authorization: `Bearer ${
+              localStorage.getItem("authToken") ||
+              sessionStorage.getItem("authToken")
+            }`,
+          },
         });
+
+        if (response.ok) {
+          const serverData = await response.json();
+          setUserData(serverData);
+          setEditedUser({
+            firstName: serverData.first_name,
+            lastName: serverData.last_name,
+            username: serverData.username,
+          });
+
+          // Update local storage with fresh data
+          const storage = localStorage.getItem("authToken")
+            ? localStorage
+            : sessionStorage;
+          storage.setItem("userData", JSON.stringify(serverData));
+        } else {
+          // Fallback to local storage if server fails
+          const storedUser =
+            localStorage.getItem("userData") ||
+            sessionStorage.getItem("userData");
+
+          if (!storedUser) {
+            throw new Error("No user data found");
+          }
+
+          const parsedUser = JSON.parse(storedUser);
+          setUserData(parsedUser);
+          setEditedUser({
+            firstName: parsedUser.first_name,
+            lastName: parsedUser.last_name,
+            username: parsedUser.username,
+          });
+        }
       } catch (error) {
         console.error("Failed to load user data:", error);
         toast({
@@ -95,7 +121,7 @@ export default function ProfilePage() {
 
     try {
       const response = await fetch(
-      `${API_BASE_URL}/api/user/profile/change-password`,
+        `${API_BASE_URL}/api/user/profile/change-password`,
         {
           method: "PUT",
           headers: {
@@ -146,24 +172,21 @@ export default function ProfilePage() {
     if (!userData) return;
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/user/${userData.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${
-              localStorage.getItem("authToken") ||
-              sessionStorage.getItem("authToken")
-            }`,
-          },
-          body: JSON.stringify({
-            first_name: editedUser.firstName,
-            last_name: editedUser.lastName,
-            username: editedUser.username,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/user/${userData.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${
+            localStorage.getItem("authToken") ||
+            sessionStorage.getItem("authToken")
+          }`,
+        },
+        body: JSON.stringify({
+          first_name: editedUser.firstName,
+          last_name: editedUser.lastName,
+          username: editedUser.username,
+        }),
+      });
 
       const data = await response.json();
 
@@ -221,6 +244,28 @@ export default function ProfilePage() {
     );
   }
 
+  // Function to handle image loading errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    target.src = "/default-avatar.png";
+    target.onerror = null; // Prevent infinite loop if default image fails
+  };
+
+  // Construct profile picture URL
+  const getProfilePictureUrl = () => {
+    if (!userData?.profile_pic) return "/default-avatar.png";
+
+    // If it's already a full URL, use it directly
+    if (userData.profile_pic.startsWith("http")) {
+      return userData.profile_pic;
+    }
+
+    // Otherwise, construct the URL with the API base
+    return `${API_BASE_URL}${userData.profile_pic.startsWith("/") ? "" : "/"}${
+      userData.profile_pic
+    }`;
+  };
+
   return (
     <div>
       <div className="flex items-center mb-5">
@@ -236,7 +281,10 @@ export default function ProfilePage() {
         <div className="bg-[#F1F7F7] p-6 rounded-lg">
           <div className="bg-white rounded-lg p-10">
             <div className="flex justify-end mb-2">
-              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <Dialog
+                open={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+              >
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
@@ -349,9 +397,10 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center">
               <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
                 <img
-                  src={userData.profile_pic}
+                  src={getProfilePictureUrl()}
                   alt={`${userData.first_name} ${userData.last_name}`}
                   className="w-full h-full object-cover"
+                  onError={handleImageError}
                 />
               </div>
               <h2 className="text-xl font-medium mb-1">{`${userData.first_name} ${userData.last_name}`}</h2>
@@ -392,7 +441,11 @@ export default function ProfilePage() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     onClick={() => setShowOldPassword(!showOldPassword)}
                   >
-                    {showOldPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showOldPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -419,7 +472,11 @@ export default function ProfilePage() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                   >
-                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showNewPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -446,7 +503,11 @@ export default function ProfilePage() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
