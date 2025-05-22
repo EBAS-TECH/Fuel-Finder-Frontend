@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Eye, Trash2, Search, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Trash2, Search, AlertCircle, ChevronLeft, ChevronRight, Edit } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,6 +14,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface User {
@@ -35,7 +41,16 @@ const DriversPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [driverToDelete, setDriverToDelete] = useState<string | null>(null); // Stores original ID
+  const [driverToDelete, setDriverToDelete] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [driverToEdit, setDriverToEdit] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
   const itemsPerPage = 4;
 
@@ -91,7 +106,7 @@ const DriversPage: React.FC = () => {
           lastName: user.last_name || 'User',
           username: user.username || 'N/A',
           email: user.email || 'No email',
-          avatar: user.profile_pic || '/default-avatar.png', // Use profile_pic from response
+          avatar: user.profile_pic || '/default-avatar.png',
           role: user.role || ''
         }))
         .filter((user) => user.role.toUpperCase() === "DRIVER");
@@ -118,6 +133,7 @@ const DriversPage: React.FC = () => {
   const handleDeleteDriver = async () => {
     if (!driverToDelete) return;
 
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       if (!token) {
@@ -137,8 +153,9 @@ const DriversPage: React.FC = () => {
         throw new Error(errorData.message || "Failed to delete driver");
       }
 
-      await fetchDrivers();
-
+      // Optimistic update - remove the driver from state immediately
+      setDrivers(prevDrivers => prevDrivers.filter(driver => driver.originalId !== driverToDelete));
+      
       toast({
         title: "Success",
         description: "Driver deleted successfully",
@@ -150,9 +167,88 @@ const DriversPage: React.FC = () => {
         description: error.message || "Failed to delete driver",
         variant: "destructive",
       });
+      // If error occurs, refetch to ensure state is correct
+      fetchDrivers();
     } finally {
+      setIsDeleting(false);
       setDeleteDialogOpen(false);
       setDriverToDelete(null);
+    }
+  };
+
+  const handleEditClick = (driver: User) => {
+    setDriverToEdit(driver);
+    setEditForm({
+      firstName: driver.firstName,
+      lastName: driver.lastName,
+      username: driver.username,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleUpdateDriver = async () => {
+    if (!driverToEdit) return;
+
+    setIsUpdating(true);
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/user/${driverToEdit.originalId}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          first_name: editForm.firstName,
+          last_name: editForm.lastName,
+          username: editForm.username,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update driver");
+      }
+
+      // Optimistic update - update the driver in state immediately
+      setDrivers(prevDrivers => 
+        prevDrivers.map(driver => 
+          driver.originalId === driverToEdit.originalId
+            ? { 
+                ...driver, 
+                firstName: editForm.firstName,
+                lastName: editForm.lastName,
+                username: editForm.username
+              }
+            : driver
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Driver updated successfully",
+      });
+      setEditDialogOpen(false);
+    } catch (error: any) {
+      console.error("Update error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update driver",
+        variant: "destructive",
+      });
+      // If error occurs, refetch to ensure state is correct
+      fetchDrivers();
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -174,7 +270,7 @@ const DriversPage: React.FC = () => {
     )
     .map((driver, index) => ({
       ...driver,
-      id: (currentPage - 1) * itemsPerPage + index + 1 // Sequential ID per page
+      id: (currentPage - 1) * itemsPerPage + index + 1
     }));
 
   // Reset to page 1 when search term changes
@@ -223,16 +319,79 @@ const DriversPage: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={handleDeleteDriver}
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Driver Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Driver</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  First Name *
+                </label>
+                <Input
+                  name="firstName"
+                  value={editForm.firstName}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Last Name *
+                </label>
+                <Input
+                  name="lastName"
+                  value={editForm.lastName}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Username *
+              </label>
+              <Input
+                name="username"
+                value={editForm.username}
+                onChange={handleEditFormChange}
+                required
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-green-500 hover:bg-green-600 text-white"
+              onClick={handleUpdateDriver}
+              disabled={isUpdating}
+            >
+              {isUpdating ? "Updating..." : "Update Driver"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center mb-5">
         <div className="flex items-center text-emerald-500">
@@ -292,6 +451,14 @@ const DriversPage: React.FC = () => {
                       <td className="py-4 px-4 text-emerald-600">{driver.email}</td>
                       <td className="py-4 px-4">
                         <div className="flex justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-emerald-600 hover:bg-emerald-100"
+                            onClick={() => handleEditClick(driver)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                           <Link to={`/admin/drivers/${driver.originalId}`}>
                             <Button variant="ghost" size="icon" className="text-emerald-600 hover:bg-emerald-100">
                               <Eye className="h-4 w-4" />
