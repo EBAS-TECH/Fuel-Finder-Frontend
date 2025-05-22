@@ -10,7 +10,10 @@ import {
   Clock,
   Gauge,
   X,
-  ChevronDown,
+  Droplet,
+  Activity,
+  Users,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -32,27 +35,46 @@ import {
   PieChart,
   Pie,
   Cell,
+  LabelList,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Color palette
+// Green color palette
 const COLORS = {
-  primary: "#8B5CF6", // purple
-  success: "#10B981", // emerald
-  warning: "#F59E0B", // amber
-  danger: "#EF4444", // red
-  info: "#3B82F6", // blue
-  lightBlue: "#93C5FD", // light blue
-  dark: "#1F2937", // gray-800
+  primary: "#10B981",  // emerald-500
+  light: "#D1FAE5",    // emerald-100
+  dark: "#065F46",     // emerald-800
+  accent: "#059669",   // emerald-600
+  secondary: "#ECFDF5", // emerald-50
+  danger: "#EF4444",   // red-500
+  warning: "#F59E0B",  // amber-500
 };
 
 // Define fuel types and their colors
 const fuelTypeColors = {
-  PETROL: COLORS.primary,
-  DIESEL: COLORS.lightBlue,
+  PETROL: "#8B5CF6",  // purple-500
+  DIESEL: "#3B82F6",  // blue-500
+};
+
+// Custom bar shape to make it thinner
+const ThinBar = (props) => {
+  const { x, y, width, height, fill } = props;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={fill}
+        rx={4} // Rounded corners
+        ry={4}
+      />
+    </g>
+  );
 };
 
 export default function DashboardPage() {
@@ -228,58 +250,77 @@ export default function DashboardPage() {
     }
   };
 
+  const refreshData = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  };
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-emerald-50 min-h-screen">
+      {/* Header Section */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-bold text-emerald-900">
+            <Droplet className="inline mr-2 h-8 w-8 text-emerald-600" />
             Station Dashboard
           </h1>
-          <p className="text-gray-600">Here's your station overview</p>
+          <p className="text-emerald-700">Welcome to your fuel station management hub</p>
         </div>
-        <Button
-          onClick={fetchAISuggestion}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-full"
-          disabled={aiLoading}
-        >
-          <Zap className="h-5 w-5 text-white" />
-          <span className="font-medium text-white">
-            {aiLoading ? "Loading..." : "Get AI Suggestions"}
-          </span>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="text-emerald-600 border-emerald-300 hover:bg-emerald-100"
+            onClick={refreshData}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button
+            onClick={fetchAISuggestion}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg shadow-md"
+            disabled={aiLoading}
+          >
+            <Activity className="h-5 w-5 text-white" />
+            <span className="font-medium text-white">
+              {aiLoading ? "Analyzing..." : "AI Insights"}
+            </span>
+          </Button>
+        </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
         </div>
       ) : (
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* Rating Card */}
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-4 border-emerald-400">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm font-medium text-purple-800">
-                    Average Rating
+                  <CardTitle className="text-sm font-medium text-emerald-800">
+                    Customer Rating
                   </CardTitle>
-                  <div className="p-2 rounded-lg bg-purple-200">
-                    <Star className="h-5 w-5 text-purple-600" />
+                  <div className="p-2 rounded-lg bg-emerald-200">
+                    <Star className="h-5 w-5 text-emerald-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-purple-900 mb-2">
+                <div className="text-4xl font-bold text-emerald-900 mb-2">
                   {feedbackData?.average_rate || "0"}
-                  <span className="text-lg text-purple-600">/5</span>
+                  <span className="text-lg text-emerald-600">/5</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {feedbackData?.average_rate > 3 ? (
                     <>
                       <TrendingUp className="h-4 w-4 text-emerald-500" />
                       <span className="text-sm text-emerald-700">
-                        Good performance
+                        Excellent performance
                       </span>
                     </>
                   ) : (
@@ -293,32 +334,32 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
               <CardFooter className="pt-0">
-                <CardDescription className="text-purple-700">
+                <CardDescription className="text-emerald-700">
                   Based on {feedbackData?.total || 0} customer reviews
                 </CardDescription>
               </CardFooter>
             </Card>
 
             {/* Feedback Card */}
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-4 border-emerald-400">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm font-medium text-blue-800">
-                    Customer Feedback
+                  <CardTitle className="text-sm font-medium text-emerald-800">
+                    Customer Engagement
                   </CardTitle>
-                  <div className="p-2 rounded-lg bg-blue-200">
-                    <MessageSquare className="h-5 w-5 text-blue-600" />
+                  <div className="p-2 rounded-lg bg-emerald-200">
+                    <Users className="h-5 w-5 text-emerald-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-blue-900 mb-2">
+                <div className="text-4xl font-bold text-emerald-900 mb-2">
                   {feedbackData?.total || "0"}
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div className="w-full bg-emerald-200 rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-2 rounded-full"
+                      className="bg-emerald-600 h-2 rounded-full"
                       style={{
                         width: `${Math.min(
                           100,
@@ -327,24 +368,24 @@ export default function DashboardPage() {
                       }}
                     ></div>
                   </div>
-                  <span className="text-xs text-blue-700">
+                  <span className="text-xs text-emerald-700">
                     {Math.min(100, ((feedbackData?.total || 0) / 50) * 100)}%
                   </span>
                 </div>
               </CardContent>
               <CardFooter className="pt-0">
-                <CardDescription className="text-blue-700">
+                <CardDescription className="text-emerald-700">
                   Engagements this month
                 </CardDescription>
               </CardFooter>
             </Card>
 
             {/* Fuel Card */}
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-4 border-emerald-400">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-sm font-medium text-emerald-800">
-                    Available Fuel Types
+                    Available Fuel
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-emerald-200">
                     <Fuel className="h-5 w-5 text-emerald-600" />
@@ -378,21 +419,18 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Charts Section - Only shown if there's available fuel */}
+          {/* Charts Section */}
           {fuelAvailability.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Fuel Availability Bar Chart */}
-              <Card className="border-0 shadow-lg">
+              <Card className="border-0 shadow-lg bg-white">
                 <CardHeader>
-                  <CardTitle className="text-gray-800">
-                    Fuel Availability Duration
+                  <CardTitle className="text-emerald-900">
+                    <Clock className="inline mr-2 h-5 w-5 text-emerald-600" />
+                    Fuel Availability Hours
                   </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Hours of availability for available fuel types
-                    <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                      <Clock className="inline h-3 w-3 mr-1" />
-                      Current Status
-                    </span>
+                  <CardDescription className="text-emerald-700">
+                    Current availability duration by fuel type
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -401,27 +439,29 @@ export default function DashboardPage() {
                       <BarChart
                         data={barChartData}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                        layout="vertical" // Makes bars horizontal
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                         <XAxis 
-                          type="number" 
-                          tick={{ fill: "#6B7280" }}
-                          axisLine={false}
-                        />
-                        <YAxis 
                           dataKey="name" 
-                          type="category" 
-                          tick={{ fill: "#6B7280" }}
-                          axisLine={false}
-                          width={80}
+                          tick={{ fill: "#065F46" }}
+                          axisLine={{ stroke: "#065F46" }}
+                        />
+                        <YAxis
+                          tick={{ fill: "#065F46" }}
+                          axisLine={{ stroke: "#065F46" }}
+                          label={{
+                            value: "Hours",
+                            angle: -90,
+                            position: "insideLeft",
+                            fill: "#065F46",
+                          }}
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: "#FFF",
-                            borderColor: "#E5E7EB",
+                            backgroundColor: "#ECFDF5",
+                            borderColor: "#10B981",
                             borderRadius: "0.5rem",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            color: "#065F46",
                           }}
                           formatter={(value) => [
                             `${value} hours`,
@@ -431,12 +471,19 @@ export default function DashboardPage() {
                         <Bar
                           dataKey="hours"
                           name="Availability (Hours)"
-                          radius={[0, 4, 4, 0]} // Rounded corners on right side only
-                          barSize={30} // Thinner bars
+                          barSize={30}
+                          shape={<ThinBar />}
                         >
                           {barChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
+                          <LabelList
+                            dataKey="hours"
+                            position="top"
+                            fill="#065F46"
+                            fontSize={12}
+                            fontWeight={500}
+                          />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -445,17 +492,14 @@ export default function DashboardPage() {
               </Card>
 
               {/* Fuel Distribution Pie Chart */}
-              <Card className="border-0 shadow-lg">
+              <Card className="border-0 shadow-lg bg-white">
                 <CardHeader>
-                  <CardTitle className="text-gray-800">
+                  <CardTitle className="text-emerald-900">
+                    <Gauge className="inline mr-2 h-5 w-5 text-emerald-600" />
                     Fuel Distribution
                   </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Percentage distribution of available fuel types
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      <Gauge className="inline h-3 w-3 mr-1" />
-                      Current stock
-                    </span>
+                  <CardDescription className="text-emerald-700">
+                    Percentage of total availability by fuel type
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -480,14 +524,14 @@ export default function DashboardPage() {
                         </Pie>
                         <Tooltip
                           formatter={(value, name, props) => [
-                            `${props.payload.percentage.toFixed(1)}% (${props.payload.value} hours)`,
+                            `${props.payload.percentage.toFixed(1)}% (${props.payload.value}h)`,
                             props.payload.name,
                           ]}
                           contentStyle={{
-                            backgroundColor: "#FFF",
-                            borderColor: "#E5E7EB",
+                            backgroundColor: "#ECFDF5",
+                            borderColor: "#10B981",
                             borderRadius: "0.5rem",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            color: "#065F46",
                           }}
                         />
                         <Legend 
@@ -503,14 +547,15 @@ export default function DashboardPage() {
               </Card>
             </div>
           ) : (
-            <Card className="border-0 shadow-lg">
+            <Card className="border-0 shadow-lg bg-white">
               <CardHeader>
-                <CardTitle className="text-gray-800">
-                  No Fuel Currently Available
+                <CardTitle className="text-emerald-900">
+                  <AlertCircle className="inline mr-2 h-5 w-5 text-amber-500" />
+                  No Fuel Available
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-emerald-700">
                   There are currently no available fuel types in your station.
                 </div>
               </CardContent>
@@ -521,18 +566,18 @@ export default function DashboardPage() {
 
       {/* AI Suggestion Modal */}
       <Dialog open={showAIModal} onOpenChange={setShowAIModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-emerald-50 border-emerald-200">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+            <DialogTitle className="flex items-center justify-between text-emerald-900">
               <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-emerald-600" />
+                <Activity className="h-5 w-5 text-emerald-600" />
                 <span>AI Station Analysis</span>
               </div>
               <button 
                 onClick={() => setShowAIModal(false)}
-                className="p-1 rounded-full hover:bg-gray-100"
+                className="p-1 rounded-full hover:bg-emerald-100"
               >
-                <X className="h-5 w-5 text-gray-500" />
+                <X className="h-5 w-5 text-emerald-600" />
               </button>
             </DialogTitle>
           </DialogHeader>
@@ -541,10 +586,10 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">
+                  <h3 className="text-lg font-medium text-emerald-900 mb-1">
                     {aiSuggestion.name}
                   </h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-emerald-700">
                     TIN: {aiSuggestion.tinNumber}
                   </p>
                 </div>
@@ -554,30 +599,30 @@ export default function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-500 mb-1">Rating</h4>
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="bg-white p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-sm font-medium text-emerald-600 mb-1">Rating</h4>
+                  <p className="text-2xl font-bold text-emerald-900">
                     {aiSuggestion.rating}
-                    <span className="text-lg text-gray-500">/5</span>
+                    <span className="text-lg text-emerald-600">/5</span>
                   </p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-500 mb-1">Availability</h4>
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="bg-white p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-sm font-medium text-emerald-600 mb-1">Availability</h4>
+                  <p className="text-2xl font-bold text-emerald-900">
                     {aiSuggestion.availaleHour}
-                    <span className="text-lg text-gray-500"> hours</span>
+                    <span className="text-lg text-emerald-600"> hours</span>
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Analysis</h4>
-                  <p className="text-gray-600">{aiSuggestion.reason}</p>
+                <div className="bg-white p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Analysis</h4>
+                  <p className="text-emerald-800">{aiSuggestion.reason}</p>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Recommendations</h4>
-                  <p className="text-gray-600">{aiSuggestion.suggestion}</p>
+                <div className="bg-white p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Recommendations</h4>
+                  <p className="text-emerald-800">{aiSuggestion.suggestion}</p>
                 </div>
               </div>
             </div>

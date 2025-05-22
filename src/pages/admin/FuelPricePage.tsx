@@ -23,7 +23,7 @@ interface FuelPrice {
   fuel_type: string;
   price: number;
   created_at: string;
-  effective_upto: string | null;
+  updated_at: string;
 }
 
 const Spinner = () => (
@@ -47,7 +47,6 @@ export default function FuelPricePage() {
   // Form state
   const [fuelType, setFuelType] = useState("PETROL");
   const [price, setPrice] = useState("");
-  const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [error, setError] = useState("");
 
@@ -114,7 +113,6 @@ export default function FuelPricePage() {
 
     setFuelType("PETROL");
     setPrice("");
-    setStartDate(new Date());
     setEndDate(null);
     setIsEditMode(false);
     setIsDialogOpen(true);
@@ -126,8 +124,7 @@ export default function FuelPricePage() {
 
     setFuelType(fuel.fuel_type);
     setPrice(fuel.price.toString());
-    setStartDate(new Date(fuel.created_at));
-    setEndDate(fuel.effective_upto ? new Date(fuel.effective_upto) : null);
+    setEndDate(new Date(fuel.updated_at)); // Using updated_at as end_date
     setIsEditMode(true);
     setIsDialogOpen(true);
     setError("");
@@ -154,7 +151,7 @@ export default function FuelPricePage() {
         throw new Error(data.message || "Failed to delete fuel price");
       }
 
-      await fetchFuelPrices(); // Refresh data after deletion
+      await fetchFuelPrices();
 
       toast({
         title: "Success",
@@ -188,8 +185,8 @@ export default function FuelPricePage() {
     e.preventDefault();
     if (!checkAuth()) return;
 
-    if (!price || !startDate) {
-      setError("Please fill all required fields");
+    if (!price) {
+      setError("Please enter a price");
       return;
     }
 
@@ -214,8 +211,7 @@ export default function FuelPricePage() {
       const payload = {
         fuel_type: fuelType,
         price: priceValue,
-        created_at: startDate.toISOString(),
-        effective_upto: endDate?.toISOString() || null
+        end_date: endDate?.toISOString() || null
       };
 
       const url = isEditMode
@@ -239,14 +235,14 @@ export default function FuelPricePage() {
         throw new Error(data.message || `Failed to ${isEditMode ? 'update' : 'create'} fuel price`);
       }
 
-      await fetchFuelPrices(); // Refresh data after successful operation
+      await fetchFuelPrices();
 
       toast({
         title: "Success",
         description: `Fuel price ${isEditMode ? 'updated' : 'created'} successfully`,
       });
 
-      setIsDialogOpen(false); // Close the dialog
+      setIsDialogOpen(false);
     } catch (error: any) {
       setError(error.message || "Failed to save fuel price");
     } finally {
@@ -275,23 +271,23 @@ export default function FuelPricePage() {
 
       <div className="bg-[#F1F7F7] p-6 rounded-lg">
         <div className="flex justify-end items-center mb-4 gap-4">
-  <div className="relative w-64">
-    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-    <Input
-      placeholder="Search fuel type"
-      className="pl-10 bg-white border rounded-lg h-9 focus:ring-green-500"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-    />
-  </div>
-  
-  <Button
-    onClick={handleAddFuelPrice}
-    className="bg-green-500 hover:bg-green-600 text-white whitespace-nowrap border border-green-500 rounded-lg shadow-sm"
-  >
-    Add Fuel Type
-  </Button>
-</div>
+          <div className="relative w-64">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search fuel type"
+              className="pl-10 bg-white border rounded-lg h-9 focus:ring-green-500"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <Button
+            onClick={handleAddFuelPrice}
+            className="bg-green-500 hover:bg-green-600 text-white whitespace-nowrap border border-green-500 rounded-lg shadow-sm"
+          >
+            Add Fuel Type
+          </Button>
+        </div>
 
         <div className="bg-white rounded-lg overflow-hidden">
           <Table>
@@ -300,8 +296,8 @@ export default function FuelPricePage() {
                 <TableHead className="bg-green-500 text-white font-normal w-16 text-center">ID</TableHead>
                 <TableHead className="bg-green-500 text-white font-normal">Fuel Type</TableHead>
                 <TableHead className="bg-green-500 text-white font-normal">Price (Br/L)</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Start Date</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">End Date</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Created At</TableHead>
+                <TableHead className="bg-green-500 text-white font-normal">Updated At</TableHead>
                 <TableHead className="bg-green-500 text-white font-normal text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -312,9 +308,7 @@ export default function FuelPricePage() {
                   <TableCell>{fuel.fuel_type}</TableCell>
                   <TableCell>{fuel.price.toFixed(2)}</TableCell>
                   <TableCell>{format(new Date(fuel.created_at), "MMM d, yyyy")}</TableCell>
-                  <TableCell>
-                    {fuel.effective_upto ? format(new Date(fuel.effective_upto), "MMM d, yyyy") : "N/A"}
-                  </TableCell>
+                  <TableCell>{format(new Date(fuel.updated_at), "MMM d, yyyy")}</TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center space-x-2">
                       <Button
@@ -384,34 +378,6 @@ export default function FuelPricePage() {
                   type="number"
                   step="0.01"
                 />
-              </div>
-
-              {/* Start Date Picker */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Start Date <span className="text-red-500">*</span>
-                </label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => date && setStartDate(date)}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
               </div>
 
               {/* End Date Picker */}
