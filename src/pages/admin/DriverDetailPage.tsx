@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import gasStationImage from "@/assets/gas-stations.png"; // Corrected import path
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface User {
@@ -360,9 +360,13 @@ export default function DriverDetailPage() {
                           <div className="flex justify-end items-center gap-3 bg-gray-50 p-2 rounded-lg">
                             <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200">
                               <img
-                                src={gasStationImage}
+                                src={station.logo}
                                 alt={station.en_name}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "https://via.placeholder.com/56";
+                                }}
                               />
                             </div>
                             <div className="text-right">
@@ -370,8 +374,7 @@ export default function DriverDetailPage() {
                                 {station.en_name}
                               </h5>
                               <div className="flex items-center gap-1 justify-end mt-1">
-                                <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md flex items-center">
-                                  <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 mr-0.5" />
+                                <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-md">
                                   {station.average_rating.toFixed(1)}
                                 </span>
                               </div>
@@ -395,7 +398,7 @@ export default function DriverDetailPage() {
                     {Math.min(
                       currentPage * itemsPerPage,
                       filteredFeedbacks.length
-                    )}{" "}
+                    )}{ " "}
                     of {filteredFeedbacks.length} feedbacks
                   </div>
 
