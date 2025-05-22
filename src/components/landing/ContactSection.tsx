@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import PrimaryButton from "../PrimaryButton";
 import { useToast } from "@/components/ui/use-toast";
@@ -6,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 const ContactSection = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    fullName: "",
+    full_name: "",  // Changed to match backend expectation
     email: "",
     message: ""
   });
@@ -20,23 +19,46 @@ const ContactSection = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      const response = await fetch("https://fuel-finder-backend.onrender.com/api/comment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: formData.full_name,
+          email: formData.email,
+          message: formData.message
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Message sent successfully!",
+          description: "We'll get back to you as soon as possible.",
+        });
+        setFormData({
+          full_name: "",
+          email: "",
+          message: ""
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to send message");
+      }
+    } catch (error) {
       toast({
-        title: "Message sent!",
-        description: "We'll get back to you as soon as possible.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
+        variant: "destructive",
       });
-      setFormData({
-        fullName: "",
-        email: "",
-        message: ""
-      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -90,14 +112,14 @@ const ContactSection = () => {
           <div className="bg-fuelGreen-50 p-8 rounded-lg shadow-sm animate-fade-in animate-delay-200">
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-1">
                   Full Name*
                 </label>
                 <input
                   type="text"
-                  id="fullName"
-                  name="fullName"
-                  value={formData.fullName}
+                  id="full_name"
+                  name="full_name"  // Changed to match backend expectation
+                  value={formData.full_name}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fuelGreen-500"
                   placeholder="Enter your full name"
