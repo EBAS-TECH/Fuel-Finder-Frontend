@@ -30,7 +30,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
-import { format, differenceInHours, subMonths, isBefore, isAfter } from "date-fns";
+import { format, subMonths, isBefore, isAfter } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -45,6 +45,7 @@ interface StationReport {
   suggestion: string;
   rating: number;
   availaleHour: number;
+  logo: string;
 }
 
 const DelegateStationsPage = () => {
@@ -60,7 +61,6 @@ const DelegateStationsPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Calculate total available hours across all filtered stations
   const totalAvailableHours = filteredStations.reduce(
     (sum, station) => sum + Math.floor(station.availaleHour),
     0
@@ -125,14 +125,6 @@ const DelegateStationsPage = () => {
 
     setFilteredStations(filtered);
     setCurrentPage(1);
-
-    if (filtered.length === 0) {
-      toast({
-        title: "No Data Found",
-        description: "No stations match the current filters.",
-        variant: "destructive"
-      });
-    }
   };
 
   const handleRankFilterChange = (value: string) => {
@@ -255,21 +247,40 @@ const DelegateStationsPage = () => {
       format: "a4"
     });
 
+    // Dark green theme
+    const headerColor = [0, 100, 0]; // Dark green
+    const alternateRowColor = [240, 255, 240]; // Light green
+    
+    // Title and metadata
     doc.setFontSize(18);
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
-    doc.text('Fuel Stations Performance Report', 105, 20, { align: 'center' });
+    doc.text('Fuel Stations Performance Report', 105, 15, { align: 'center' });
 
     doc.setFontSize(11);
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
-    doc.text(`Date Range: ${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`, 14, 30);
-    doc.text(`Total Available Hours: ${totalAvailableHours}`, 14, 37);
+    doc.text(`Date Range: ${format(startDate, 'MMM dd, yyyy')} - ${format(endDate, 'MMM dd, yyyy')}`, 14, 25);
+    doc.text(`Total Available Hours: ${totalAvailableHours}`, 14, 32);
 
     if (rankFilter !== "all") {
-      doc.text(`AI Rank Filter: ${rankFilter}`, 14, 44);
+      doc.text(`AI Rank Filter: ${rankFilter}`, 14, 39);
     }
 
+    // Calculate column widths to fit the page
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const availableWidth = pageWidth - (margin * 2);
+    const columnWidths = [
+      availableWidth * 0.25, // Name
+      availableWidth * 0.15, // TIN
+      availableWidth * 0.1,  // Rating
+      availableWidth * 0.1,  // Hours
+      availableWidth * 0.1,  // Rank
+      availableWidth * 0.3   // Reason
+    ];
+
+    // Prepare data
     const tableData = filteredStations.map(station => [
       station.name,
       station.tinNumber,
@@ -279,19 +290,21 @@ const DelegateStationsPage = () => {
       station.reason
     ]);
 
+    // Generate table
     autoTable(doc, {
       head: [
         [
-          { content: 'Station Name', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
-          { content: 'TIN Number', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } },
-          { content: 'Rating', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold' } },
-          { content: 'Available Hours', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold' } },
-          { content: 'AI Rank', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold' } },
-          { content: 'Reason', styles: { fillColor: [51, 51, 51], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' } }
+          'Station Name',
+          'TIN Number',
+          'Rating',
+          'Available Hours',
+          'AI Rank',
+          'Reason'
         ]
       ],
       body: tableData,
-      startY: rankFilter !== "all" ? 50 : 44,
+      startY: 45,
+      margin: { top: 45, left: margin, right: margin },
       styles: {
         cellPadding: 3,
         fontSize: 9,
@@ -301,26 +314,28 @@ const DelegateStationsPage = () => {
         fillColor: [255, 255, 255]
       },
       headStyles: {
-        fillColor: [51, 51, 51],
+        fillColor: headerColor,
         textColor: [255, 255, 255],
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        halign: 'center'
       },
       columnStyles: {
-        0: { halign: 'left', cellWidth: 40 },
-        1: { halign: 'left', cellWidth: 30 },
-        2: { cellWidth: 15, halign: 'center' },
-        3: { cellWidth: 20, halign: 'center' },
-        4: { cellWidth: 20, halign: 'center' },
-        5: { halign: 'left', cellWidth: 45 }
+        0: { halign: 'left', cellWidth: columnWidths[0] },
+        1: { halign: 'left', cellWidth: columnWidths[1] },
+        2: { halign: 'center', cellWidth: columnWidths[2] },
+        3: { halign: 'center', cellWidth: columnWidths[3] },
+        4: { halign: 'center', cellWidth: columnWidths[4] },
+        5: { halign: 'left', cellWidth: columnWidths[5] }
       },
-      willDrawCell: (data) => {
-        if (data.section === 'body' && data.row.index % 2 === 0) {
-          doc.setFillColor(240, 240, 240);
-          doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-        }
+      alternateRowStyles: {
+        fillColor: alternateRowColor
+      },
+      didDrawPage: () => {
+        // Don't repeat header on each page
       }
     });
 
+    // Footer
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -328,13 +343,13 @@ const DelegateStationsPage = () => {
       doc.setTextColor(0, 0, 0);
       doc.text(
         `Page ${i} of ${pageCount}`,
-        doc.internal.pageSize.width - 20,
+        doc.internal.pageSize.width - margin,
         doc.internal.pageSize.height - 10,
         { align: 'right' }
       );
       doc.text(
         `Created on: ${format(new Date(), 'MMM dd, yyyy')}`,
-        20,
+        margin,
         doc.internal.pageSize.height - 10,
         { align: 'left' }
       );
@@ -414,7 +429,10 @@ const DelegateStationsPage = () => {
                   mode="single"
                   selected={startDate}
                   onSelect={(date) => {
-                    if (date) setStartDate(date);
+                    if (date) {
+                      setStartDate(date);
+                      document.body.click();
+                    }
                   }}
                   initialFocus
                 />
@@ -436,7 +454,10 @@ const DelegateStationsPage = () => {
                   mode="single"
                   selected={endDate}
                   onSelect={(date) => {
-                    if (date) setEndDate(date);
+                    if (date) {
+                      setEndDate(date);
+                      document.body.click();
+                    }
                   }}
                   initialFocus
                 />
@@ -444,14 +465,14 @@ const DelegateStationsPage = () => {
             </Popover>
 
             <Button
-              className="bg-green-500 hover:bg-green-600 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
               onClick={handleFilter}
             >
               Filter
             </Button>
 
             <Button
-              className="bg-green-500 hover:bg-green-500 text-white font-bold"
+              className="bg-green-800 hover:bg-green-900 text-white font-bold"
               onClick={exportToPDF}
             >
               Export PDF
@@ -461,7 +482,7 @@ const DelegateStationsPage = () => {
 
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-green-500">
+            <TableHeader className="bg-green-600">
               <TableRow>
                 <TableHead className="text-white text-left">ID</TableHead>
                 <TableHead className="text-white text-left">Station Name</TableHead>
@@ -475,18 +496,19 @@ const DelegateStationsPage = () => {
             <TableBody>
               {currentStations.length > 0 ? (
                 currentStations.map((station, index) => (
-                  <TableRow key={station.stationId} className="border-b">
+                  <TableRow key={station.stationId} className="border-b hover:bg-green-50">
                     <TableCell className="text-left">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                     <TableCell className="font-medium text-left">
                       <div className="flex items-center">
                         <div className="w-8 h-8 rounded-full bg-gray-200 mr-2 overflow-hidden flex items-center justify-center">
-                          {station.name.includes("Total") ? (
-                            <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs">TE</div>
-                          ) : station.name.includes("OLA") ? (
-                            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">OE</div>
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">YM</div>
-                          )}
+                          <img
+                            src={station.logo}
+                            alt={station.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://via.placeholder.com/40";
+                            }}
+                          />
                         </div>
                         {station.name}
                       </div>
@@ -508,7 +530,7 @@ const DelegateStationsPage = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-green-500 p-0"
+                        className="text-green-600 p-0 hover:bg-green-100"
                         onClick={() => navigateToDetail(station)}
                       >
                         <Eye className="h-5 w-5" />
@@ -527,42 +549,44 @@ const DelegateStationsPage = () => {
           </Table>
         </div>
 
-        <div className="flex items-center justify-between py-4">
-          <div className="text-sm text-gray-500">
-            Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredStations.length)} of {filteredStations.length}
-          </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    onClick={() => handlePageChange(page)}
-                    isActive={page === currentPage}
-                    className={page === currentPage ? "bg-green-500 text-white" : ""}
-                  >
-                    {page}
-                  </PaginationLink>
+        {filteredStations.length > itemsPerPage && (
+          <div className="flex items-center justify-between py-4">
+            <div className="text-sm text-gray-500">
+              Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredStations.length)} of {filteredStations.length}
+            </div>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className={currentPage === 1 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                  />
                 </PaginationItem>
-              ))}
 
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className={currentPage === totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(page)}
+                      isActive={page === currentPage}
+                      className={page === currentPage ? "bg-green-600 text-white" : ""}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className={currentPage === totalPages ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
     </div>
   );

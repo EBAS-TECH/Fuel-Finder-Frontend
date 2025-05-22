@@ -47,13 +47,24 @@ const FuelAvailability = () => {
   const [stationId, setStationId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Constants for pagination
+  const ITEMS_PER_PAGE = 5;
+  const totalPages = Math.ceil(filteredFuels.length / ITEMS_PER_PAGE);
+  const paginatedFuels = filteredFuels.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
+
   // Fetch station ID
   useEffect(() => {
     const fetchStationId = async () => {
       try {
-        const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
-        
+        const token =
+          localStorage.getItem("authToken") ||
+          sessionStorage.getItem("authToken");
+        const userId =
+          localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
         if (!token || !userId) {
           throw new Error("Authentication credentials not found");
         }
@@ -69,7 +80,9 @@ const FuelAvailability = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to fetch station details");
+          throw new Error(
+            errorData.message || "Failed to fetch station details"
+          );
         }
 
         const data = await response.json();
@@ -92,7 +105,9 @@ const FuelAvailability = () => {
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
       if (!token) {
         throw new Error("Authentication token not found");
       }
@@ -109,33 +124,44 @@ const FuelAvailability = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to fetch fuel availability data");
+        throw new Error(
+          errorData.message || "Failed to fetch fuel availability data"
+        );
       }
 
       const data = await response.json();
-      
+
       if (!data.data) {
         throw new Error("Invalid data structure from API");
       }
 
       // Process the data to keep only the most recent record for each fuel type
-      const latestRecords = data.data.reduce((acc: FuelAvailability[], current: FuelAvailability) => {
-        const existingIndex = acc.findIndex(item => item.fuel_type === current.fuel_type);
-        if (existingIndex === -1) {
-          acc.push(current);
-        } else {
-          // Replace if current record is more recent
-          if (new Date(current.up_time) > new Date(acc[existingIndex].up_time)) {
-            acc[existingIndex] = current;
+      const latestRecords = data.data.reduce(
+        (acc: FuelAvailability[], current: FuelAvailability) => {
+          const existingIndex = acc.findIndex(
+            (item) => item.fuel_type === current.fuel_type
+          );
+          if (existingIndex === -1) {
+            acc.push(current);
+          } else {
+            // Replace if current record is more recent
+            if (
+              new Date(current.up_time) > new Date(acc[existingIndex].up_time)
+            ) {
+              acc[existingIndex] = current;
+            }
           }
-        }
-        return acc;
-      }, []);
+          return acc;
+        },
+        []
+      );
 
       const fuelsWithHours = latestRecords.map((fuel: FuelAvailability) => ({
         ...fuel,
         available_hrs: fuel.availability_duration
-          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(
+              2
+            )
           : "0.00",
       }));
 
@@ -144,8 +170,12 @@ const FuelAvailability = () => {
 
       // Update current fuel status
       const currentStatus = {
-        diesel: fuelsWithHours.some(f => f.fuel_type === "DIESEL" && f.available),
-        petrol: fuelsWithHours.some(f => f.fuel_type === "PETROL" && f.available),
+        diesel: fuelsWithHours.some(
+          (f) => f.fuel_type === "DIESEL" && f.available
+        ),
+        petrol: fuelsWithHours.some(
+          (f) => f.fuel_type === "PETROL" && f.available
+        ),
       };
       setFuelAvailability(currentStatus);
     } catch (error) {
@@ -166,7 +196,9 @@ const FuelAvailability = () => {
 
   const toggleFuel = async (fuelType: string) => {
     try {
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
       if (!token) {
         throw new Error("Authentication token not found");
       }
@@ -185,15 +217,17 @@ const FuelAvailability = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update fuel availability");
+        throw new Error(
+          errorData.message || "Failed to update fuel availability"
+        );
       }
 
       const data = await response.json();
-      
-      // Update the local state to modify the existing record
-      setFuels(prevFuels => {
+
+      // Update the fuels state with the new data
+      setFuels((prevFuels) => {
         const existingIndex = prevFuels.findIndex(
-          f => f.fuel_type === fuelType.toUpperCase()
+          (f) => f.fuel_type === fuelType.toUpperCase()
         );
 
         if (existingIndex >= 0) {
@@ -204,18 +238,40 @@ const FuelAvailability = () => {
             down_time: data.data.down_time,
             availability_duration: data.data.availability_duration,
             available_hrs: data.data.availability_duration
-              ? (parseFloat(data.data.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+              ? (
+                  parseFloat(data.data.availability_duration) /
+                  (1000 * 60 * 60)
+                ).toFixed(2)
               : "0.00",
           };
           return updatedFuels;
+        } else {
+          // If it's a new record (shouldn't happen but just in case)
+          return [
+            ...prevFuels,
+            {
+              id: data.data.id,
+              station_id: stationId,
+              fuel_type: fuelType.toUpperCase(),
+              up_time: data.data.up_time,
+              down_time: data.data.down_time,
+              available: data.data.available,
+              availability_duration: data.data.availability_duration,
+              available_hrs: data.data.availability_duration
+                ? (
+                    parseFloat(data.data.availability_duration) /
+                    (1000 * 60 * 60)
+                  ).toFixed(2)
+                : "0.00",
+            },
+          ];
         }
-        return prevFuels;
       });
 
-      // Also update filtered fuels if needed
-      setFilteredFuels(prev => {
+      // Update filtered fuels as well
+      setFilteredFuels((prev) => {
         const existingIndex = prev.findIndex(
-          f => f.fuel_type === fuelType.toUpperCase()
+          (f) => f.fuel_type === fuelType.toUpperCase()
         );
 
         if (existingIndex >= 0) {
@@ -226,16 +282,37 @@ const FuelAvailability = () => {
             down_time: data.data.down_time,
             availability_duration: data.data.availability_duration,
             available_hrs: data.data.availability_duration
-              ? (parseFloat(data.data.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+              ? (
+                  parseFloat(data.data.availability_duration) /
+                  (1000 * 60 * 60)
+                ).toFixed(2)
               : "0.00",
           };
           return updated;
+        } else {
+          return [
+            ...prev,
+            {
+              id: data.data.id,
+              station_id: stationId,
+              fuel_type: fuelType.toUpperCase(),
+              up_time: data.data.up_time,
+              down_time: data.data.down_time,
+              available: data.data.available,
+              availability_duration: data.data.availability_duration,
+              available_hrs: data.data.availability_duration
+                ? (
+                    parseFloat(data.data.availability_duration) /
+                    (1000 * 60 * 60)
+                  ).toFixed(2)
+                : "0.00",
+            },
+          ];
         }
-        return prev;
       });
 
       // Update the toggle status
-      setFuelAvailability(prev => ({
+      setFuelAvailability((prev) => ({
         ...prev,
         [fuelType.toLowerCase()]: data.data.available,
       }));
@@ -255,7 +332,9 @@ const FuelAvailability = () => {
 
   const filterFuelAvailability = async () => {
     try {
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
       if (!token) {
         throw new Error("Authentication token not found");
       }
@@ -269,39 +348,43 @@ const FuelAvailability = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            station_id: stationId,
-            start_date: startDate ? format(startDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
-            end_date: endDate ? format(endDate, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") : null,
+            start_date: startDate ? format(startDate, "yyyy-MM-dd") : null,
+            end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
           }),
         }
       );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to filter fuel availability");
+        throw new Error(
+          errorData.message || "Failed to filter fuel availability"
+        );
       }
 
       const data = await response.json();
-      
-      // Process to keep only the most recent record per fuel type
-      const latestRecords = data.data.reduce((acc: FuelAvailability[], current: FuelAvailability) => {
-        const existingIndex = acc.findIndex(item => item.fuel_type === current.fuel_type);
-        if (existingIndex === -1) {
-          acc.push(current);
-        } else {
-          if (new Date(current.up_time) > new Date(acc[existingIndex].up_time)) {
-            acc[existingIndex] = current;
-          }
-        }
-        return acc;
-      }, []);
 
-      let filteredData = latestRecords.map((fuel: FuelAvailability) => ({
-        ...fuel,
-        available_hrs: fuel.availability_duration
-          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2)
-          : "0.00",
+      // Process the data to create a similar structure as before
+      const processedData = data.data.map((item) => ({
+        id: `${item.fuel_type}-${Date.now()}`, // Generate a unique ID
+        station_id: stationId,
+        fuel_type: item.fuel_type,
+        up_time: format(
+          startDate || new Date(),
+          "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        ),
+        down_time: format(
+          endDate || new Date(),
+          "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        ),
+        available: true, // Assuming the fuel was available during the period
+        availability_duration: item.total_milliseconds,
+        available_hrs: (
+          parseFloat(item.total_milliseconds) /
+          (1000 * 60)
+        ).toFixed(2),
       }));
+
+      let filteredData = processedData;
 
       if (selectedFuel !== "all") {
         filteredData = filteredData.filter(
@@ -310,6 +393,7 @@ const FuelAvailability = () => {
       }
 
       setFilteredFuels(filteredData);
+      setPage(1); // Reset to first page when filtering
     } catch (error) {
       toast({
         title: "Error",
@@ -324,9 +408,12 @@ const FuelAvailability = () => {
       setFilteredFuels(fuels);
     } else {
       setFilteredFuels(
-        fuels.filter((fuel) => fuel.fuel_type.toLowerCase() === selectedFuel.toLowerCase())
+        fuels.filter(
+          (fuel) => fuel.fuel_type.toLowerCase() === selectedFuel.toLowerCase()
+        )
       );
     }
+    setPage(1); // Reset to first page when changing fuel type filter
   }, [selectedFuel, fuels]);
 
   return (
@@ -382,9 +469,10 @@ const FuelAvailability = () => {
                 <Select value={selectedFuel} onValueChange={setSelectedFuel}>
                   <SelectTrigger className="w-[150px] bg-white">
                     <SelectValue placeholder="Fuel Type">
-                      {selectedFuel === "all" 
-                        ? "All Fuel Types" 
-                        : selectedFuel.charAt(0).toUpperCase() + selectedFuel.slice(1)}
+                      {selectedFuel === "all"
+                        ? "All Fuel Types"
+                        : selectedFuel.charAt(0).toUpperCase() +
+                          selectedFuel.slice(1)}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -468,20 +556,35 @@ const FuelAvailability = () => {
                       </td>
                     </tr>
                   ) : filteredFuels.length > 0 ? (
-                    filteredFuels.map((fuel, index) => (
+                    (filteredFuels.length > ITEMS_PER_PAGE
+                      ? paginatedFuels
+                      : filteredFuels
+                    ).map((fuel, index) => (
                       <tr
                         key={fuel.id}
                         className="border-b border-gray-100 hover:bg-gray-50"
                       >
-                        <td className="py-3 px-4">{index + 1}</td>
+                        <td className="py-3 px-4">
+                          {(page - 1) * ITEMS_PER_PAGE + index + 1}
+                        </td>
                         <td className="py-3 px-4 font-medium">
                           {fuel.fuel_type}
                         </td>
                         <td className="py-3 px-4">
-                          {fuel.up_time ? format(new Date(fuel.up_time), "dd MMM yyyy HH:mm") : "N/A"}
+                          {fuel.up_time
+                            ? format(
+                                new Date(fuel.up_time),
+                                "dd MMM yyyy HH:mm"
+                              )
+                            : "N/A"}
                         </td>
                         <td className="py-3 px-4">
-                          {fuel.down_time ? format(new Date(fuel.down_time), "dd MMM yyyy HH:mm") : "N/A"}
+                          {fuel.down_time
+                            ? format(
+                                new Date(fuel.down_time),
+                                "dd MMM yyyy HH:mm"
+                              )
+                            : "N/A"}
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-fuelGreen-600 font-medium">
@@ -492,7 +595,10 @@ const FuelAvailability = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan={5}
+                        className="py-4 text-center text-gray-500"
+                      >
                         No fuel availability records found
                       </td>
                     </tr>
@@ -501,67 +607,72 @@ const FuelAvailability = () => {
               </table>
             </div>
 
-            <div className="p-4 flex items-center justify-between border-t">
-              <div className="text-sm text-gray-500">
-                Showing {filteredFuels.length} fuel types
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+            {filteredFuels.length > ITEMS_PER_PAGE && (
+              <div className="p-4 flex items-center justify-between border-t">
+                <div className="text-sm text-gray-500">
+                  Showing {paginatedFuels.length} of {filteredFuels.length} fuel
+                  types
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    ></path>
-                  </svg>
-                  <span className="sr-only">Previous</span>
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 w-8 rounded-full bg-fuelGreen-500 hover:bg-fuelGreen-600"
-                  onClick={() => setPage(1)}
-                >
-                  1
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 rounded-full"
-                  onClick={() => setPage(2)}
-                >
-                  2
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
-                  onClick={() => setPage(page + 1)}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      ></path>
+                    </svg>
+                    <span className="sr-only">Previous</span>
+                  </Button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (pageNumber) => (
+                      <Button
+                        key={pageNumber}
+                        size="sm"
+                        className={`h-8 w-8 rounded-full ${
+                          page === pageNumber
+                            ? "bg-fuelGreen-500 hover:bg-fuelGreen-600"
+                            : "bg-white"
+                        }`}
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </Button>
+                    )
+                  )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    disabled={page === totalPages}
+                    onClick={() => setPage(page + 1)}
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    ></path>
-                  </svg>
-                  <span className="sr-only">Next</span>
-                </Button>
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      ></path>
+                    </svg>
+                    <span className="sr-only">Next</span>
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </Card>
         </div>
 
