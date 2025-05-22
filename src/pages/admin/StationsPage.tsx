@@ -78,6 +78,8 @@ export default function StationsPage() {
       last_name: "",
       username: "",
       email: "",
+      role: "GAS_STATION",
+      password: "123456", // Default password as per your API
     },
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -153,7 +155,7 @@ export default function StationsPage() {
       }
 
       const data = await response.json();
-      console.log("Fetched stations:", data.data); // Debug log
+      console.log("Fetched stations:", data.data);
 
       const stationsWithUserDetails = await Promise.all(
         data.data.map(async (station: Station) => {
@@ -233,6 +235,8 @@ export default function StationsPage() {
         last_name: station.user?.last_name || "",
         username: station.user?.username || "",
         email: station.user?.email || "",
+        role: "GAS_STATION",
+        password: "123456",
       },
     });
     setIsEditing(true);
@@ -250,7 +254,7 @@ export default function StationsPage() {
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/api/station/update/${currentStation.id}`,
+        `https://fuel-finder-backend.onrender.com/api/station/update/${currentStation.id}`,
         {
           method: "PUT",
           headers: {
@@ -262,7 +266,9 @@ export default function StationsPage() {
               first_name: editForm.user.first_name,
               last_name: editForm.user.last_name,
               username: editForm.user.username,
+              password: editForm.user.password,
               email: editForm.user.email,
+              role: editForm.user.role,
             },
             en_name: editForm.en_name,
             am_name: editForm.am_name,
@@ -280,8 +286,12 @@ export default function StationsPage() {
         return;
       }
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to update station");
+        throw new Error(
+          responseData.message || "Failed to update station"
+        );
       }
 
       toast({
@@ -395,57 +405,57 @@ export default function StationsPage() {
       <div className="bg-[#F1F7F7] p-6 rounded-lg">
         
         <div className="flex justify-between items-center mb-5">
-  <Tabs
-    defaultValue="PENDING"
-    value={activeTab}
-    onValueChange={(value) =>
-      setActiveTab(value as "PENDING" | "VERIFIED" | "NOT-VERIFIED")
-    }
-  >
-    <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
-      <TabsTrigger
-        value="PENDING"
-        className={`bg-white border ${
-          activeTab === "PENDING"
-            ? "border-green-500 text-green-500"
-            : "border-transparent"
-        } rounded-lg shadow-sm`}
-      >
-        Pending
-      </TabsTrigger>
-      <TabsTrigger
-        value="VERIFIED"
-        className={`bg-white border ${
-          activeTab === "VERIFIED"
-            ? "border-green-500 text-green-500"
-            : "border-transparent"
-        } rounded-lg shadow-sm`}
-      >
-        Approved
-      </TabsTrigger>
-      <TabsTrigger
-        value="NOT-VERIFIED"
-        className={`bg-white border ${
-          activeTab === "NOT-VERIFIED"
-            ? "border-green-500 text-green-500"
-            : "border-transparent"
-        } rounded-lg shadow-sm`}
-      >
-        Rejected
-      </TabsTrigger>
-    </TabsList>
-  </Tabs>
+          <Tabs
+            defaultValue="PENDING"
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "PENDING" | "VERIFIED" | "NOT-VERIFIED")
+            }
+          >
+            <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
+              <TabsTrigger
+                value="PENDING"
+                className={`bg-white border ${
+                  activeTab === "PENDING"
+                    ? "border-green-500 text-green-500"
+                    : "border-transparent"
+                } rounded-lg shadow-sm`}
+              >
+                Pending
+              </TabsTrigger>
+              <TabsTrigger
+                value="VERIFIED"
+                className={`bg-white border ${
+                  activeTab === "VERIFIED"
+                    ? "border-green-500 text-green-500"
+                    : "border-transparent"
+                } rounded-lg shadow-sm`}
+              >
+                Approved
+              </TabsTrigger>
+              <TabsTrigger
+                value="NOT-VERIFIED"
+                className={`bg-white border ${
+                  activeTab === "NOT-VERIFIED"
+                    ? "border-green-500 text-green-500"
+                    : "border-transparent"
+                } rounded-lg shadow-sm`}
+              >
+                Rejected
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-  <div className="w-72 relative">
-    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-    <Input
-      placeholder="Search station"
-    className="pl-10 bg-white border-none rounded-[12px] h-10 w-full"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
-  </div>
-</div>
+          <div className="w-72 relative">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search station"
+              className="pl-10 bg-white border-none rounded-[12px] h-10 w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
