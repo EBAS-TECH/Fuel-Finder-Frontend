@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Edit, Eye, EyeOff, User, Mail, Phone, MapPin, FileText, Navigation } from "lucide-react";
-import gasStationsImage from "@/assets/gas-stations.png";
+import { Edit, Eye, EyeOff, User, MapPin, FileText, Navigation } from "lucide-react";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Profile = () => {
@@ -36,7 +34,6 @@ const Profile = () => {
     username: ""
   });
 
-  // Helper function to get auth headers
   const getAuthHeaders = () => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
     const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
@@ -48,7 +45,6 @@ const Profile = () => {
     };
   };
 
-  // Function to fetch station data
   const fetchStationData = async () => {
     try {
       const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
@@ -59,9 +55,7 @@ const Profile = () => {
 
       const response = await fetch(
         `${API_BASE_URL}/api/station/user/${userId}`,
-        {
-          headers: getAuthHeaders()
-        }
+        { headers: getAuthHeaders() }
       );
 
       if (!response.ok) throw new Error("Failed to fetch station data");
@@ -86,31 +80,20 @@ const Profile = () => {
     }
   };
 
-  // Fetch station data on component mount
   useEffect(() => {
     fetchStationData();
   }, [navigate, toast]);
 
-  // Listen for user update events from other components
   useEffect(() => {
-    const handleUserUpdated = () => {
-      fetchStationData();
-    };
-
+    const handleUserUpdated = () => fetchStationData();
     window.addEventListener("userUpdated", handleUserUpdated);
-    return () => {
-      window.removeEventListener("userUpdated", handleUserUpdated);
-    };
+    return () => window.removeEventListener("userUpdated", handleUserUpdated);
   }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditedUser(prev => ({ ...prev, [name]: value }));
-    
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: "" }));
   };
 
   const handlePasswordChange = (e) => {
@@ -119,149 +102,83 @@ const Profile = () => {
   };
 
   const togglePasswordVisibility = (field) => {
-    setShowPassword(prev => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+    setShowPassword(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
   const validateForm = () => {
-    let valid = true;
     const newErrors = {
-      first_name: "",
-      last_name: "",
-      username: ""
+      first_name: !editedUser.first_name.trim() ? "First name is required" : "",
+      last_name: !editedUser.last_name.trim() ? "Last name is required" : "",
+      username: !editedUser.username.trim() ? "Username is required" : 
+               editedUser.username.length < 3 ? "Username must be at least 3 characters" : ""
     };
-
-    if (!editedUser.first_name.trim()) {
-      newErrors.first_name = "First name is required";
-      valid = false;
-    }
-
-    if (!editedUser.last_name.trim()) {
-      newErrors.last_name = "Last name is required";
-      valid = false;
-    }
-
-    if (!editedUser.username.trim()) {
-      newErrors.username = "Username is required";
-      valid = false;
-    } else if (editedUser.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-      valid = false;
-    }
-
     setErrors(newErrors);
-    return valid;
+    return !Object.values(newErrors).some(error => error);
   };
 
   const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
-      const response = await fetch(
-        `${API_BASE_URL}/api/user/${userId}`,
-        {
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            first_name: editedUser.first_name,
-            last_name: editedUser.last_name,
-            username: editedUser.username,
-          })
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/user/${userId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          first_name: editedUser.first_name,
+          last_name: editedUser.last_name,
+          username: editedUser.username,
+        })
+      });
 
       if (!response.ok) throw new Error("Failed to update profile");
 
       const { data } = await response.json();
+      setStation(prev => ({ ...prev, user: data }));
 
-      // Update the station state with new user data
-      setStation(prev => ({
-        ...prev,
-        user: data
-      }));
-
-      // Update user data in storage
       const storage = localStorage.getItem("userData") ? localStorage : sessionStorage;
       const storedUser = JSON.parse(storage.getItem("userData") || "{}");
-
-      const updatedUser = {
+      storage.setItem("userData", JSON.stringify({
         ...storedUser,
         first_name: editedUser.first_name,
         last_name: editedUser.last_name,
         username: editedUser.username,
-      };
+      }));
 
-      storage.setItem("userData", JSON.stringify(updatedUser));
-
-      // Dispatch event to notify other components
       window.dispatchEvent(new CustomEvent("userUpdated"));
-
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-
+      toast({ title: "Success", description: "Profile updated successfully" });
       setIsEditDialogOpen(false);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords don't match",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Passwords don't match", variant: "destructive" });
       return;
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/user/profile/change-password`,
-        {
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            oldPassword: passwordData.oldPassword,
-            newPassword: passwordData.newPassword
-          })
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/user/profile/change-password`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          oldPassword: passwordData.oldPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to change password");
       }
 
-      toast({
-        title: "Success",
-        description: "Password changed successfully",
-      });
-
-      setPasswordData({
-        oldPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-      });
+      toast({ title: "Success", description: "Password changed successfully" });
+      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
@@ -295,16 +212,12 @@ const Profile = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Profile Display & Edit Section */}
         <div className="bg-[#F1F7F7] p-6 rounded-lg">
           <div className="bg-white rounded-lg p-6">
             <div className="flex justify-end mb-2">
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="border-emerald-500 text-emerald-500 hover:bg-emerald-50"
-                  >
+                  <Button variant="outline" className="border-emerald-500 text-emerald-500 hover:bg-emerald-50">
                     <Edit className="h-4 w-4 mr-2" /> Edit
                   </Button>
                 </DialogTrigger>
@@ -315,10 +228,7 @@ const Profile = () => {
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label
-                          htmlFor="first_name"
-                          className="text-sm font-medium mb-1 block"
-                        >
+                        <label htmlFor="first_name" className="text-sm font-medium mb-1 block">
                           First Name *
                         </label>
                         <Input
@@ -329,15 +239,10 @@ const Profile = () => {
                           required
                           className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
                         />
-                        {errors.first_name && (
-                          <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>
-                        )}
+                        {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>}
                       </div>
                       <div>
-                        <label
-                          htmlFor="last_name"
-                          className="text-sm font-medium mb-1 block"
-                        >
+                        <label htmlFor="last_name" className="text-sm font-medium mb-1 block">
                           Last Name *
                         </label>
                         <Input
@@ -348,16 +253,11 @@ const Profile = () => {
                           required
                           className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
                         />
-                        {errors.last_name && (
-                          <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>
-                        )}
+                        {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>}
                       </div>
                     </div>
                     <div>
-                      <label
-                        htmlFor="username"
-                        className="text-sm font-medium mb-1 block"
-                      >
+                      <label htmlFor="username" className="text-sm font-medium mb-1 block">
                         Username *
                       </label>
                       <Input
@@ -368,9 +268,7 @@ const Profile = () => {
                         required
                         className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
                       />
-                      {errors.username && (
-                        <p className="text-red-500 text-xs mt-1">{errors.username}</p>
-                      )}
+                      {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
                     </div>
                   </div>
                   <div className="flex justify-end">
@@ -388,11 +286,13 @@ const Profile = () => {
 
             <div className="flex flex-col items-center mb-6">
               <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
-                <img
-                  src={gasStationsImage}
-                  alt="Station logo"
-                  className="w-full h-full object-cover"
-                />
+                {station.logo && (
+                  <img
+                    src={station.logo}
+                    alt="Station logo"
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </div>
               <h2 className="text-xl font-medium mb-1">{station.en_name}</h2>
               <p className="text-gray-500 mb-1">{station.am_name}</p>
@@ -403,27 +303,7 @@ const Profile = () => {
               )}
             </div>
 
-            {/* Station Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Email Field */}
-              <div className="space-y-1">
-                <p className="text-xs text-gray-500">Email</p>
-                <div className="flex items-center">
-                  <Mail className="w-5 h-5 mr-2 text-emerald-500" />
-                  <span className="text-sm">{station.user?.email}</span>
-                </div>
-              </div>
-
-              {/* Phone Field */}
-              <div className="space-y-1">
-                <p className="text-xs text-gray-500">Phone number</p>
-                <div className="flex items-center">
-                  <Phone className="w-5 h-5 mr-2 text-emerald-500" />
-                  <span className="text-sm">{station.user?.phone}</span>
-                </div>
-              </div>
-
-              {/* TIN Number Field */}
               <div className="space-y-1">
                 <p className="text-xs text-gray-500">TIN Number</p>
                 <div className="flex items-center">
@@ -432,7 +312,6 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Address Field */}
               <div className="space-y-1">
                 <p className="text-xs text-gray-500">Address</p>
                 <div className="flex items-center">
@@ -441,7 +320,6 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Latitude Field */}
               <div className="space-y-1">
                 <p className="text-xs text-gray-500">Latitude</p>
                 <div className="flex items-center">
@@ -450,7 +328,6 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* Longitude Field */}
               <div className="space-y-1">
                 <p className="text-xs text-gray-500">Longitude</p>
                 <div className="flex items-center">
@@ -462,17 +339,12 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Change Password Section */}
         <div className="bg-[#F1F7F7] p-6 rounded-lg">
           <div className="bg-white rounded-lg p-6">
             <h3 className="text-lg font-medium mb-4">Change Password</h3>
-
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label
-                  htmlFor="oldPassword"
-                  className="text-sm font-medium mb-1 block"
-                >
+                <label htmlFor="oldPassword" className="text-sm font-medium mb-1 block">
                   Old Password*
                 </label>
                 <div className="relative">
@@ -497,10 +369,7 @@ const Profile = () => {
               </div>
 
               <div>
-                <label
-                  htmlFor="newPassword"
-                  className="text-sm font-medium mb-1 block"
-                >
+                <label htmlFor="newPassword" className="text-sm font-medium mb-1 block">
                   New Password*
                 </label>
                 <div className="relative">
@@ -525,10 +394,7 @@ const Profile = () => {
               </div>
 
               <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="text-sm font-medium mb-1 block"
-                >
+                <label htmlFor="confirmPassword" className="text-sm font-medium mb-1 block">
                   Confirm New Password*
                 </label>
                 <div className="relative">
