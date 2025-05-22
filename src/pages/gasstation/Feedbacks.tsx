@@ -339,53 +339,55 @@ const Feedbacks = () => {
             ))}
           </div>
 
-          <div className="flex items-center justify-center mt-6 gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              disabled={page === 1}
-              onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                ></path>
-              </svg>
-              <span className="sr-only">Previous</span>
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 w-8 rounded-full bg-fuelGreen-400 hover:bg-fuelGreen-500"
-            >
-              {page}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 w-8 rounded-full"
-              onClick={() => setPage(prev => prev + 1)}
-            >
-              {page + 1}
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={() => setPage(prev => prev + 1)}
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                  clipRule="evenodd"
-                ></path>
-              </svg>
-              <span className="sr-only">Next</span>
-            </Button>
-          </div>
+          {filteredFeedbacks.length > 3 && (
+            <div className="flex items-center justify-center mt-6 gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                disabled={page === 1}
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  ></path>
+                </svg>
+                <span className="sr-only">Previous</span>
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 w-8 rounded-full bg-fuelGreen-400 hover:bg-fuelGreen-500"
+              >
+                {page}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setPage(prev => prev + 1)}
+              >
+                {page + 1}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setPage(prev => prev + 1)}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  ></path>
+                </svg>
+                <span className="sr-only">Next</span>
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
     </div>

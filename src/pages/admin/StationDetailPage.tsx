@@ -40,7 +40,7 @@ export default function StationDetailPage() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("all");
-  const [fuelType, setFuelType] = useState("");
+  const [fuelType, setFuelType] = useState("all");
   const [feedbackDate, setFeedbackDate] = useState<Date | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -52,9 +52,10 @@ export default function StationDetailPage() {
   const [originalFuelAvailabilityData, setOriginalFuelAvailabilityData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const itemsPerPage = 5;
 
   useEffect(() => {
-    const fetchStationDetails = async () => {
+    const fetchData = async () => {
       try {
         const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
@@ -62,67 +63,78 @@ export default function StationDetailPage() {
           throw new Error("No authentication token found");
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/station/${id}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json"
+        const fetchStationDetails = async () => {
+          const response = await fetch(`${API_BASE_URL}/api/station/${id}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to fetch station details");
           }
-        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to fetch station details");
-        }
+          const data = await response.json();
+          setStationData(data.data);
+          setStatus(data.data.status);
+        };
 
-        const data = await response.json();
-        setStationData(data.data);
-        setStatus(data.data.status);
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
-    };
+        const fetchFeedbackData = async () => {
+          const response = await fetch(`${API_BASE_URL}/api/feedback/station/${id}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json"
+            }
+          });
 
-    const fetchFeedbackData = async () => {
-      try {
-        const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-        if (!authToken) throw new Error("No authentication token found");
-
-        const response = await fetch(`${API_BASE_URL}/api/feedback/station/${id}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json"
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to fetch feedback data");
           }
-        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to fetch feedback data");
-        }
+          const data = await response.json();
 
-        const data = await response.json();
-        
-        const feedbackWithUserDetails = await Promise.all(
-          data.data.map(async (feedback: any) => {
-            try {
-              const userResponse = await fetch(
-                `${API_BASE_URL}/api/user/${feedback.user_id}`,
-                {
-                  method: "GET",
-                  headers: {
-                    Authorization: `Bearer ${authToken}`,
-                    "Content-Type": "application/json"
+          const feedbackWithUserDetails = await Promise.all(
+            data.data.map(async (feedback: any) => {
+              try {
+                const userResponse = await fetch(
+                  `${API_BASE_URL}/api/user/${feedback.user_id}`,
+                  {
+                    method: "GET",
+                    headers: {
+                      Authorization: `Bearer ${authToken}`,
+                      "Content-Type": "application/json"
+                    }
                   }
-                }
-              );
+                );
 
-              if (!userResponse.ok) {
-                console.error("Failed to fetch user details for feedback:", feedback.id);
+                if (!userResponse.ok) {
+                  console.error("Failed to fetch user details for feedback:", feedback.id);
+                  return {
+                    ...feedback,
+                    user: {
+                      first_name: "Unknown",
+                      last_name: "User",
+                      profile_pic: "/default-user.png"
+                    }
+                  };
+                }
+
+                const userData = await userResponse.json();
+                return {
+                  ...feedback,
+                  user: {
+                    first_name: userData.data.first_name || "Unknown",
+                    last_name: userData.data.last_name || "User",
+                    profile_pic: userData.data.profile_pic || "/default-user.png"
+                  }
+                };
+              } catch (error) {
+                console.error("Error fetching user details:", error);
                 return {
                   ...feedback,
                   user: {
@@ -132,65 +144,35 @@ export default function StationDetailPage() {
                   }
                 };
               }
+            })
+          );
 
-              const userData = await userResponse.json();
-              return { 
-                ...feedback, 
-                user: {
-                  first_name: userData.data.first_name || "Unknown",
-                  last_name: userData.data.last_name || "User",
-                  profile_pic: userData.data.profile_pic || "/default-user.png"
-                }
-              };
-            } catch (error) {
-              console.error("Error fetching user details:", error);
-              return {
-                ...feedback,
-                user: {
-                  first_name: "Unknown",
-                  last_name: "User",
-                  profile_pic: "/default-user.png"
-                }
-              };
+          setFeedbackData(feedbackWithUserDetails);
+          setOriginalFeedbackData(feedbackWithUserDetails);
+        };
+
+        const fetchFuelAvailabilityData = async () => {
+          const response = await fetch(`${API_BASE_URL}/api/availability/station/${id}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json"
             }
-          })
-        );
+          });
 
-        setFeedbackData(feedbackWithUserDetails);
-        setOriginalFeedbackData(feedbackWithUserDetails);
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
-    };
-
-    const fetchFuelAvailabilityData = async () => {
-      try {
-        const authToken = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-
-        if (!authToken) {
-          throw new Error("No authentication token found");
-        }
-
-        const response = await fetch(`${API_BASE_URL}/api/availability/station/${id}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json"
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to fetch fuel availability data");
           }
-        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to fetch fuel availability data");
-        }
+          const data = await response.json();
+          setFuelAvailabilityData(data.data);
+          setOriginalFuelAvailabilityData(data.data);
+        };
 
-        const data = await response.json();
-        setFuelAvailabilityData(data.data);
-        setOriginalFuelAvailabilityData(data.data);
+        await fetchStationDetails();
+        await fetchFeedbackData();
+        await fetchFuelAvailabilityData();
       } catch (error: any) {
         toast({
           title: "Error",
@@ -200,9 +182,7 @@ export default function StationDetailPage() {
       }
     };
 
-    fetchStationDetails();
-    fetchFeedbackData();
-    fetchFuelAvailabilityData();
+    fetchData();
   }, [id, toast]);
 
   const renderStars = (rating: number) => {
@@ -280,8 +260,8 @@ export default function StationDetailPage() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message.includes("22P02") 
-          ? "Invalid station data format" 
+        description: error.message.includes("22P02")
+          ? "Invalid station data format"
           : error.message,
         variant: "destructive"
       });
@@ -290,38 +270,52 @@ export default function StationDetailPage() {
     }
   };
 
+  const resetFilters = () => {
+    setFilter("all");
+    setFuelType("all");
+    setFeedbackDate(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
   useEffect(() => {
     let filtered = [...originalFeedbackData];
-    
+
     if (filter !== "all") {
       filtered = filtered.filter(feedback => feedback.rating === parseInt(filter));
     }
-    
+
     if (feedbackDate) {
       filtered = filtered.filter(feedback => {
         const feedbackDateObj = new Date(feedback.created_at);
         return feedbackDateObj.toDateString() === feedbackDate.toDateString();
       });
     }
-    
+
     setFeedbackData(filtered);
   }, [filter, feedbackDate, originalFeedbackData]);
 
   useEffect(() => {
     let filtered = [...originalFuelAvailabilityData];
-    
-    if (fuelType) {
+
+    if (fuelType !== "all") {
       filtered = filtered.filter(item => item.fuel_type === fuelType.toUpperCase());
     }
-    
+
     if (startDate) {
-      filtered = filtered.filter(item => new Date(item.up_time) >= startDate);
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.up_time);
+        return itemDate >= startDate;
+      });
     }
-    
+
     if (endDate) {
-      filtered = filtered.filter(item => new Date(item.down_time) <= endDate);
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.up_time);
+        return itemDate <= endDate;
+      });
     }
-    
+
     setFuelAvailabilityData(filtered);
   }, [fuelType, startDate, endDate, originalFuelAvailabilityData]);
 
@@ -336,9 +330,11 @@ export default function StationDetailPage() {
     );
   }
 
+  const paginatedData = fuelAvailabilityData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div>
-     <div className="mb-5">
+      <div className="mb-5">
         <div className="flex items-start">
           <div className="flex items-center text-green-500 mr-2 h-full">
             <svg
@@ -443,8 +439,8 @@ export default function StationDetailPage() {
           <div className="lg:col-span-2">
             <div className="bg-white p-6 rounded-lg shadow-sm h-full relative">
               <div className="flex justify-end mb-4">
-                <Select 
-                  value={status} 
+                <Select
+                  value={status}
                   onValueChange={handleStatusChange}
                   disabled={isLoading}
                 >
@@ -454,7 +450,7 @@ export default function StationDetailPage() {
                     "bg-red-50 border-red-300 text-red-800"
                   }`}>
                     <div className="flex items-center gap-2">
-                      {status === "PENDING" ? "Pending" : 
+                      {status === "PENDING" ? "Pending" :
                        status === "VERIFIED" ? "Approved" : "Rejected"}
                     </div>
                   </SelectTrigger>
@@ -608,52 +604,54 @@ export default function StationDetailPage() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between mt-4">
-                <div></div>
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage > 1) handlePageChange(currentPage - 1);
-                        }}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                    {[1, 2].map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
+              {feedbackData.length > 3 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div></div>
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            handlePageChange(page);
+                            if (currentPage > 1) handlePageChange(currentPage - 1);
                           }}
-                          isActive={currentPage === page}
-                          className={
-                            currentPage === page
-                              ? "bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center"
-                              : "bg-gray-200 text-gray-600 w-8 h-8 rounded-full flex items-center justify-center"
-                          }
-                        >
-                          {page}
-                        </PaginationLink>
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
                       </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage < 2) handlePageChange(currentPage + 1);
-                        }}
-                        className={currentPage === 2 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
+                      {[1, 2].map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(page);
+                            }}
+                            isActive={currentPage === page}
+                            className={
+                              currentPage === page
+                                ? "bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center"
+                                : "bg-gray-200 text-gray-600 w-8 h-8 rounded-full flex items-center justify-center"
+                            }
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < 2) handlePageChange(currentPage + 1);
+                          }}
+                          className={currentPage === 2 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -666,6 +664,7 @@ export default function StationDetailPage() {
                 <SelectValue placeholder="Fuel Type" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="diesel">Diesel</SelectItem>
                 <SelectItem value="petrol">Petrol</SelectItem>
               </SelectContent>
@@ -701,15 +700,11 @@ export default function StationDetailPage() {
               </PopoverContent>
             </Popover>
             <Button
-              onClick={() => {
-                setFuelType("");
-                setStartDate(undefined);
-                setEndDate(undefined);
-              }}
+              onClick={resetFilters}
               variant="outline"
               className="text-gray-600 px-4"
             >
-              Clear
+              Reset Filters
             </Button>
           </div>
           <Table className="w-full border border-gray-100">
@@ -723,18 +718,18 @@ export default function StationDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fuelAvailabilityData.map((item, index) => (
+              {paginatedData.map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{item.fuel_type}</TableCell>
                   <TableCell>{new Date(item.up_time).toLocaleDateString()}</TableCell>
-                  <TableCell>{new Date(item.down_time).toLocaleDateString()}</TableCell>
+                  <TableCell>{item.down_time ? new Date(item.down_time).toLocaleDateString() : "N/A"}</TableCell>
                   <TableCell className="text-center">
                     {Math.floor(parseFloat(item.availability_duration) / 3600).toFixed(1)}
                   </TableCell>
                 </TableRow>
               ))}
-              {fuelAvailabilityData.length === 0 && (
+              {paginatedData.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-4 text-gray-500">
                     No data available
@@ -743,81 +738,75 @@ export default function StationDetailPage() {
               )}
             </TableBody>
           </Table>
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-500">
-              Showing 1 - {fuelAvailabilityData.length} of {fuelAvailabilityData.length}
+          {fuelAvailabilityData.length > itemsPerPage && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-500">
+                Showing {Math.min((currentPage - 1) * itemsPerPage + 1, fuelAvailabilityData.length)} - {Math.min(currentPage * itemsPerPage, fuelAvailabilityData.length)} of {fuelAvailabilityData.length}
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      className={`p-1.5 rounded-full ${
+                        currentPage === 1 ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
+                      }`}
+                      disabled={currentPage === 1}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m15 18-6-6 6-6" />
+                      </svg>
+                    </button>
+                  </PaginationItem>
+                  {Array.from({ length: Math.ceil(fuelAvailabilityData.length / itemsPerPage) }, (_, i) => (
+                    <PaginationItem key={i + 1}>
+                      <button
+                        onClick={() => handlePageChange(i + 1)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          currentPage === i + 1 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      className={`p-1.5 rounded-full ${
+                        currentPage === Math.ceil(fuelAvailabilityData.length / itemsPerPage) ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
+                      }`}
+                      disabled={currentPage === Math.ceil(fuelAvailabilityData.length / itemsPerPage)}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className={`p-1.5 rounded-full ${
-                      currentPage === 1 ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
-                    }`}
-                    disabled={currentPage === 1}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m15 18-6-6 6-6" />
-                    </svg>
-                  </button>
-                </PaginationItem>
-                <PaginationItem>
-                  <button
-                    onClick={() => handlePageChange(1)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      currentPage === 1 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    1
-                  </button>
-                </PaginationItem>
-                <PaginationItem>
-                  <button
-                    onClick={() => handlePageChange(2)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      currentPage === 2 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    2
-                  </button>
-                </PaginationItem>
-                <PaginationItem>
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className={`p-1.5 rounded-full ${
-                      currentPage === 2 ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
-                    }`}
-                    disabled={currentPage === 2}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+          )}
         </div>
       </div>
     </div>
