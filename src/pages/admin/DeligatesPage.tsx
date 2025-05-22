@@ -114,15 +114,26 @@ export default function DelegatesPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          ...newDelegate, 
+        body: JSON.stringify({
+          ...newDelegate,
           role: "MINISTRY_DELEGATE"
         }),
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
+        // Optimistic update: Add the new delegate to the local state
+        setDelegates(prevDelegates => [
+          ...prevDelegates,
+          {
+            ...newDelegate,
+            id: data.id, // Assuming the API returns the ID of the newly created delegate
+            displayId: prevDelegates.length + 1,
+            profile_pic: '/default-avatar.png', // Default avatar
+          }
+        ]);
+
         toast({
           title: "Success",
           description: "Delegate created successfully",
@@ -171,8 +182,17 @@ export default function DelegatesPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
+        // Optimistic update: Update the delegate in the local state
+        setDelegates(prevDelegates =>
+          prevDelegates.map(delegate =>
+            delegate.id === selectedDelegate.id
+              ? { ...delegate, ...selectedDelegate }
+              : delegate
+          )
+        );
+
         toast({
           title: "Success",
           description: "Delegate updated successfully",
@@ -202,7 +222,7 @@ export default function DelegatesPage() {
 
   const confirmDeleteDelegate = async () => {
     if (!deleteDialog.delegateId) return;
-    
+
     setIsLoading(true);
     try {
       const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -214,13 +234,17 @@ export default function DelegatesPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
+        // Optimistic update: Remove the delegate from the local state
+        setDelegates(prevDelegates =>
+          prevDelegates.filter(delegate => delegate.id !== deleteDialog.delegateId)
+        );
+
         toast({
           title: "Success",
           description: "Delegate deleted successfully",
         });
-        fetchDelegates();
       } else {
         throw new Error(data.message || "Failed to delete delegate");
       }

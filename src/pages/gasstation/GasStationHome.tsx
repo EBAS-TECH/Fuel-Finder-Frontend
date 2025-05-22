@@ -9,6 +9,8 @@ import {
   TrendingUp,
   Clock,
   Gauge,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import {
   Card,
@@ -31,6 +33,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -56,6 +60,10 @@ export default function DashboardPage() {
   const [fuelAvailability, setFuelAvailability] = useState([]);
   const [stationId, setStationId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [stationDetails, setStationDetails] = useState(null);
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,6 +96,7 @@ export default function DashboardPage() {
         }
 
         setStationId(stationData.data.id);
+        setStationDetails(stationData.data);
 
         // Fetch feedback data
         const feedbackResponse = await fetch(
@@ -135,6 +144,54 @@ export default function DashboardPage() {
     fetchData();
   }, [navigate]);
 
+  const fetchAISuggestion = async () => {
+    if (!stationId || !stationDetails) return;
+
+    try {
+      setAiLoading(true);
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
+
+      // Format dates for the API request
+      const startDate = new Date(stationDetails.created_at).toISOString();
+      const endDate = new Date().toISOString();
+
+      const response = await fetch(
+        "https://fuel-finder-backend.onrender.com/api/station/report/ministry",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            start_date: startDate,
+            end_date: endDate,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.data && Array.isArray(data.data)) {
+        // Find our station in the report
+        const stationReport = data.data.find(
+          (station) => station.stationId === stationId
+        );
+        
+        if (stationReport) {
+          setAiSuggestion(stationReport);
+          setShowAIModal(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching AI suggestions:", error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Prepare data for bar chart - only available fuels
   const barChartData = fuelAvailability.map((item) => ({
     name: item.fuel_type,
@@ -145,9 +202,31 @@ export default function DashboardPage() {
   // Prepare data for pie chart - only available fuels
   const pieChartData = fuelAvailability.map((item) => ({
     name: item.fuel_type,
-    value: 1, // Each available fuel counts as 1
+    value: item.availability_duration, // Use hours for value to show distribution
     color: item.color,
   }));
+
+  // Calculate total hours for percentage calculation
+  const totalHours = pieChartData.reduce((sum, item) => sum + item.value, 0);
+
+  // Add percentage to pie chart data
+  const pieChartDataWithPercentage = pieChartData.map((item) => ({
+    ...item,
+    percentage: totalHours > 0 ? (item.value / totalHours) * 100 : 0,
+  }));
+
+  const getCategoryColor = (category) => {
+    switch (category?.toLowerCase()) {
+      case "low":
+        return "bg-red-100 text-red-800";
+      case "medium":
+        return "bg-amber-100 text-amber-800";
+      case "high":
+        return "bg-emerald-100 text-emerald-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -158,10 +237,16 @@ export default function DashboardPage() {
           </h1>
           <p className="text-gray-600">Here's your station overview</p>
         </div>
-        <div className="flex items-center gap-2 bg-emerald-100 px-3 py-1.5 rounded-full">
-          <Zap className="h-5 w-5 text-emerald-600" />
-          <span className="font-medium text-emerald-700">Live Data</span>
-        </div>
+        <Button
+          onClick={fetchAISuggestion}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-full"
+          disabled={aiLoading}
+        >
+          <Zap className="h-5 w-5 text-white" />
+          <span className="font-medium text-white">
+            {aiLoading ? "Loading..." : "Get AI Suggestions"}
+          </span>
+        </Button>
       </div>
 
       {loading ? (
@@ -315,18 +400,21 @@ export default function DashboardPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={barChartData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        layout="vertical" // Makes bars horizontal
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                        <XAxis dataKey="name" tick={{ fill: "#6B7280" }} />
-                        <YAxis
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
+                        <XAxis 
+                          type="number" 
                           tick={{ fill: "#6B7280" }}
-                          label={{
-                            value: "Hours",
-                            angle: -90,
-                            position: "insideLeft",
-                            fill: "#6B7280",
-                          }}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          tick={{ fill: "#6B7280" }}
+                          axisLine={false}
+                          width={80}
                         />
                         <Tooltip
                           contentStyle={{
@@ -340,11 +428,11 @@ export default function DashboardPage() {
                             "Availability",
                           ]}
                         />
-                        <Legend />
                         <Bar
                           dataKey="hours"
                           name="Availability (Hours)"
-                          radius={[4, 4, 0, 0]}
+                          radius={[0, 4, 4, 0]} // Rounded corners on right side only
+                          barSize={30} // Thinner bars
                         >
                           {barChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -363,7 +451,7 @@ export default function DashboardPage() {
                     Fuel Distribution
                   </CardTitle>
                   <CardDescription className="text-gray-600">
-                    Available fuel types in station
+                    Percentage distribution of available fuel types
                     <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                       <Gauge className="inline h-3 w-3 mr-1" />
                       Current stock
@@ -375,25 +463,25 @@ export default function DashboardPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={pieChartData}
+                          data={pieChartDataWithPercentage}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
                           outerRadius={80}
                           fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
+                          dataKey="percentage"
+                          label={({ name, percentage }) =>
+                            `${name}: ${percentage.toFixed(1)}%`
                           }
                         >
-                          {pieChartData.map((entry, index) => (
+                          {pieChartDataWithPercentage.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => [
-                            `${value} fuel type${value !== 1 ? "s" : ""}`,
-                            "Available",
+                          formatter={(value, name, props) => [
+                            `${props.payload.percentage.toFixed(1)}% (${props.payload.value} hours)`,
+                            props.payload.name,
                           ]}
                           contentStyle={{
                             backgroundColor: "#FFF",
@@ -402,7 +490,12 @@ export default function DashboardPage() {
                             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                           }}
                         />
-                        <Legend />
+                        <Legend 
+                          formatter={(value, entry, index) => {
+                            const item = pieChartDataWithPercentage[index];
+                            return `${value} (${item.percentage.toFixed(1)}%)`;
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -425,6 +518,76 @@ export default function DashboardPage() {
           )}
         </>
       )}
+
+      {/* AI Suggestion Modal */}
+      <Dialog open={showAIModal} onOpenChange={setShowAIModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-emerald-600" />
+                <span>AI Station Analysis</span>
+              </div>
+              <button 
+                onClick={() => setShowAIModal(false)}
+                className="p-1 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </DialogTitle>
+          </DialogHeader>
+
+          {aiSuggestion ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">
+                    {aiSuggestion.name}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    TIN: {aiSuggestion.tinNumber}
+                  </p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(aiSuggestion.category)}`}>
+                  {aiSuggestion.category}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">Rating</h4>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {aiSuggestion.rating}
+                    <span className="text-lg text-gray-500">/5</span>
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">Availability</h4>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {aiSuggestion.availaleHour}
+                    <span className="text-lg text-gray-500"> hours</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Analysis</h4>
+                  <p className="text-gray-600">{aiSuggestion.reason}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Recommendations</h4>
+                  <p className="text-gray-600">{aiSuggestion.suggestion}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
