@@ -55,26 +55,10 @@ const COLORS = {
 
 // Define fuel types and their colors
 const fuelTypeColors = {
-  PETROL: "#8B5CF6",  // purple-500
-  DIESEL: "#3B82F6",  // blue-500
-};
-
-// Custom bar shape to make it thinner
-const ThinBar = (props) => {
-  const { x, y, width, height, fill } = props;
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={fill}
-        rx={4} // Rounded corners
-        ry={4}
-      />
-    </g>
-  );
+  PETROL: "#10B981",  // emerald-500
+  DIESEL: "#059669",  // emerald-600
+  PREMIUM: "#047857", // emerald-700
+  REGULAR: "#34D399", // emerald-400
 };
 
 export default function DashboardPage() {
@@ -440,20 +424,27 @@ export default function DashboardPage() {
                         data={barChartData}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <CartesianGrid 
+                          strokeDasharray="3 3" 
+                          stroke="#E5E7EB" 
+                          vertical={false} 
+                        />
                         <XAxis 
                           dataKey="name" 
-                          tick={{ fill: "#065F46" }}
-                          axisLine={{ stroke: "#065F46" }}
+                          tick={{ fill: "#065F46", fontSize: 12 }}
+                          axisLine={{ stroke: "#D1FAE5" }}
+                          tickLine={{ stroke: "#D1FAE5" }}
                         />
                         <YAxis
-                          tick={{ fill: "#065F46" }}
-                          axisLine={{ stroke: "#065F46" }}
+                          tick={{ fill: "#065F46", fontSize: 12 }}
+                          axisLine={{ stroke: "#D1FAE5" }}
+                          tickLine={{ stroke: "#D1FAE5" }}
                           label={{
                             value: "Hours",
                             angle: -90,
                             position: "insideLeft",
                             fill: "#065F46",
+                            fontSize: 12,
                           }}
                         />
                         <Tooltip
@@ -462,20 +453,27 @@ export default function DashboardPage() {
                             borderColor: "#10B981",
                             borderRadius: "0.5rem",
                             color: "#065F46",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                           }}
                           formatter={(value) => [
                             `${value} hours`,
                             "Availability",
                           ]}
+                          cursor={{ fill: '#D1FAE5' }}
                         />
                         <Bar
                           dataKey="hours"
                           name="Availability (Hours)"
-                          barSize={30}
-                          shape={<ThinBar />}
+                          barSize={40}
+                          radius={[4, 4, 0, 0]}
                         >
                           {barChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.color}
+                              stroke="#ECFDF5"
+                              strokeWidth={1}
+                            />
                           ))}
                           <LabelList
                             dataKey="hours"
@@ -483,6 +481,7 @@ export default function DashboardPage() {
                             fill="#065F46"
                             fontSize={12}
                             fontWeight={500}
+                            offset={10}
                           />
                         </Bar>
                       </BarChart>
@@ -511,15 +510,21 @@ export default function DashboardPage() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
+                          innerRadius={60}
                           outerRadius={80}
-                          fill="#8884d8"
+                          paddingAngle={2}
                           dataKey="percentage"
                           label={({ name, percentage }) =>
                             `${name}: ${percentage.toFixed(1)}%`
                           }
                         >
                           {pieChartDataWithPercentage.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.color}
+                              stroke="#ECFDF5"
+                              strokeWidth={2}
+                            />
                           ))}
                         </Pie>
                         <Tooltip
@@ -532,13 +537,23 @@ export default function DashboardPage() {
                             borderColor: "#10B981",
                             borderRadius: "0.5rem",
                             color: "#065F46",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                           }}
                         />
                         <Legend 
+                          layout="vertical"
+                          align="right"
+                          verticalAlign="middle"
                           formatter={(value, entry, index) => {
                             const item = pieChartDataWithPercentage[index];
-                            return `${value} (${item.percentage.toFixed(1)}%)`;
+                            return (
+                              <span className="text-xs text-emerald-800">
+                                {value} ({item.percentage.toFixed(1)}%)
+                              </span>
+                            );
                           }}
+                          iconSize={10}
+                          iconType="circle"
                         />
                       </PieChart>
                     </ResponsiveContainer>
