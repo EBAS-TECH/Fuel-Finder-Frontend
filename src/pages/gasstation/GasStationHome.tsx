@@ -35,7 +35,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  LabelList,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -63,6 +62,7 @@ const fuelTypeColors = {
 
 export default function DashboardPage() {
   const [feedbackData, setFeedbackData] = useState(null);
+  const [ratingDistribution, setRatingDistribution] = useState([]);
   const [fuelAvailability, setFuelAvailability] = useState([]);
   const [stationId, setStationId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -104,7 +104,7 @@ export default function DashboardPage() {
         setStationId(stationData.data.id);
         setStationDetails(stationData.data);
 
-        // Fetch feedback data
+        // Fetch aggregated feedback data
         const feedbackResponse = await fetch(
           `${API_BASE_URL}/api/feedback/rate`,
           {
@@ -116,6 +116,71 @@ export default function DashboardPage() {
           ...feedbackData.data,
           average_rate: parseFloat(feedbackData.data.average_rate).toFixed(1),
         });
+
+        // Simulate the response from the backend for feedback data
+        const mockFeedbackData = {
+          success: true,
+          data: [
+            {
+              id: "0ce51c5d-14df-45e7-880b-1ab8b443e343",
+              user_id: "c93bef77-2255-4d24-891d-5de0d406a02f",
+              station_id: "03ac2c68-9604-4b04-bdb6-bebf6ed3421a",
+              rating: 5,
+              comment: "Nice!",
+              created_at: "2025-05-17T14:27:02.848Z",
+              updated_at: null,
+            },
+            {
+              id: "a1b2c3d4-0007-4a8b-b007-111122223333",
+              user_id: "02d55131-3cd0-4580-956d-577e2f3df462",
+              station_id: "03ac2c68-9604-4b04-bdb6-bebf6ed3421a",
+              rating: 3,
+              comment: "Sometimes out of fuel.",
+              created_at: "2025-05-16T19:09:51.704Z",
+              updated_at: "2025-05-16T19:09:51.704Z",
+            },
+          ],
+        };
+
+        // Process rating distribution data
+        if (mockFeedbackData.data && mockFeedbackData.data.length > 0) {
+          const ratingCounts = {
+            5: 0,
+            4: 0,
+            3: 0,
+            2: 0,
+            1: 0,
+          };
+
+          mockFeedbackData.data.forEach((feedback) => {
+            const rating = Math.floor(feedback.rating);
+            if (rating >= 1 && rating <= 5) {
+              ratingCounts[rating]++;
+            }
+          });
+
+          const totalRatings = mockFeedbackData.data.length;
+          const ratingDistributionData = [5, 4, 3, 2, 1].map((rating) => ({
+            name: `${rating} Star${rating > 1 ? "s" : ""}`,
+            value: ratingCounts[rating],
+            percentage:
+              totalRatings > 0
+                ? (ratingCounts[rating] / totalRatings) * 100
+                : 0,
+            color:
+              rating === 5
+                ? "#10B981"
+                : rating === 4
+                ? "#34D399"
+                : rating === 3
+                ? "#F59E0B"
+                : rating === 2
+                ? "#F97316"
+                : "#EF4444",
+          }));
+
+          setRatingDistribution(ratingDistributionData);
+        }
 
         // Fetch fuel availability data
         const availabilityResponse = await fetch(
@@ -185,7 +250,7 @@ export default function DashboardPage() {
         const stationReport = data.data.find(
           (station) => station.stationId === stationId
         );
-        
+
         if (stationReport) {
           setAiSuggestion(stationReport);
           setShowAIModal(true);
@@ -205,30 +270,14 @@ export default function DashboardPage() {
     color: item.color,
   }));
 
-  // Prepare data for pie chart - only available fuels
-  const pieChartData = fuelAvailability.map((item) => ({
-    name: item.fuel_type,
-    value: item.availability_duration, // Use hours for value to show distribution
-    color: item.color,
-  }));
-
-  // Calculate total hours for percentage calculation
-  const totalHours = pieChartData.reduce((sum, item) => sum + item.value, 0);
-
-  // Add percentage to pie chart data
-  const pieChartDataWithPercentage = pieChartData.map((item) => ({
-    ...item,
-    percentage: totalHours > 0 ? (item.value / totalHours) * 100 : 0,
-  }));
-
   const getCategoryColor = (category) => {
     switch (category?.toLowerCase()) {
       case "low":
-        return "bg-red-100 text-red-800";
+        return "bg-red-500 text-white";
       case "medium":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-500 text-white";
       case "high":
-        return "bg-emerald-100 text-emerald-800";
+        return "bg-emerald-500 text-white";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -353,7 +402,7 @@ export default function DashboardPage() {
                     ></div>
                   </div>
                   <span className="text-xs text-emerald-700">
-                    {Math.min(100, ((feedbackData?.total || 0) / 50) * 100)}%
+                    {Math.min(100, ((feedbackData?.total || 0) / 50) * 100)}
                   </span>
                 </div>
               </CardContent>
@@ -404,178 +453,157 @@ export default function DashboardPage() {
           </div>
 
           {/* Charts Section */}
-          {fuelAvailability.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Fuel Availability Bar Chart */}
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader>
-                  <CardTitle className="text-emerald-900">
-                    <Clock className="inline mr-2 h-5 w-5 text-emerald-600" />
-                    Fuel Availability Hours
-                  </CardTitle>
-                  <CardDescription className="text-emerald-700">
-                    Current availability duration by fuel type
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={barChartData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid 
-                          strokeDasharray="3 3" 
-                          stroke="#E5E7EB" 
-                          vertical={false} 
-                        />
-                        <XAxis 
-                          dataKey="name" 
-                          tick={{ fill: "#065F46", fontSize: 12 }}
-                          axisLine={{ stroke: "#D1FAE5" }}
-                          tickLine={{ stroke: "#D1FAE5" }}
-                        />
-                        <YAxis
-                          tick={{ fill: "#065F46", fontSize: 12 }}
-                          axisLine={{ stroke: "#D1FAE5" }}
-                          tickLine={{ stroke: "#D1FAE5" }}
-                          label={{
-                            value: "Hours",
-                            angle: -90,
-                            position: "insideLeft",
-                            fill: "#065F46",
-                            fontSize: 12,
-                          }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#ECFDF5",
-                            borderColor: "#10B981",
-                            borderRadius: "0.5rem",
-                            color: "#065F46",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                          }}
-                          formatter={(value) => [
-                            `${value} hours`,
-                            "Availability",
-                          ]}
-                          cursor={{ fill: '#D1FAE5' }}
-                        />
-                        <Bar
-                          dataKey="hours"
-                          name="Availability (Hours)"
-                          barSize={40}
-                          radius={[4, 4, 0, 0]}
-                        >
-                          {barChartData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.color}
-                              stroke="#ECFDF5"
-                              strokeWidth={1}
-                            />
-                          ))}
-                          <LabelList
-                            dataKey="hours"
-                            position="top"
-                            fill="#065F46"
-                            fontSize={12}
-                            fontWeight={500}
-                            offset={10}
-                          />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Fuel Distribution Pie Chart */}
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader>
-                  <CardTitle className="text-emerald-900">
-                    <Gauge className="inline mr-2 h-5 w-5 text-emerald-600" />
-                    Fuel Distribution
-                  </CardTitle>
-                  <CardDescription className="text-emerald-700">
-                    Percentage of total availability by fuel type
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieChartDataWithPercentage}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="percentage"
-                          label={({ name, percentage }) =>
-                            `${name}: ${percentage.toFixed(1)}%`
-                          }
-                        >
-                          {pieChartDataWithPercentage.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.color}
-                              stroke="#ECFDF5"
-                              strokeWidth={2}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value, name, props) => [
-                            `${props.payload.percentage.toFixed(1)}% (${props.payload.value}h)`,
-                            props.payload.name,
-                          ]}
-                          contentStyle={{
-                            backgroundColor: "#ECFDF5",
-                            borderColor: "#10B981",
-                            borderRadius: "0.5rem",
-                            color: "#065F46",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                          }}
-                        />
-                        <Legend 
-                          layout="vertical"
-                          align="right"
-                          verticalAlign="middle"
-                          formatter={(value, entry, index) => {
-                            const item = pieChartDataWithPercentage[index];
-                            return (
-                              <span className="text-xs text-emerald-800">
-                                {value} ({item.percentage.toFixed(1)}%)
-                              </span>
-                            );
-                          }}
-                          iconSize={10}
-                          iconType="circle"
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Fuel Availability Bar Chart */}
             <Card className="border-0 shadow-lg bg-white">
               <CardHeader>
                 <CardTitle className="text-emerald-900">
-                  <AlertCircle className="inline mr-2 h-5 w-5 text-amber-500" />
-                  No Fuel Available
+                  <Clock className="inline mr-2 h-5 w-5 text-emerald-600" />
+                  Fuel Availability Hours
                 </CardTitle>
+                <CardDescription className="text-emerald-700">
+                  Current availability duration by fuel type
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-emerald-700">
-                  There are currently no available fuel types in your station.
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={barChartData}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#E5E7EB"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: "#065F46", fontSize: 12 }}
+                        axisLine={{ stroke: "#D1FAE5" }}
+                        tickLine={{ stroke: "#D1FAE5" }}
+                      />
+                      <YAxis
+                        tick={{ fill: "#065F46", fontSize: 12 }}
+                        axisLine={{ stroke: "#D1FAE5" }}
+                        tickLine={{ stroke: "#D1FAE5" }}
+                        label={{
+                          value: "Hours",
+                          angle: -90,
+                          position: "insideLeft",
+                          fill: "#065F46",
+                          fontSize: 12,
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#ECFDF5",
+                          borderColor: "#10B981",
+                          borderRadius: "0.5rem",
+                          color: "#065F46",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                        formatter={(value) => [
+                          `${value} hours`,
+                          "Availability",
+                        ]}
+                        cursor={{ fill: '#D1FAE5' }}
+                      />
+                      <Bar
+                        dataKey="hours"
+                        name="Availability (Hours)"
+                        barSize={40}
+                        radius={[4, 4, 0, 0]}
+                      >
+                        {barChartData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.color}
+                            stroke="#ECFDF5"
+                            strokeWidth={1}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
-          )}
+
+            {/* Driver's Rating Distribution Pie Chart */}
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader>
+                <CardTitle className="text-emerald-900">
+                  <Star className="inline mr-2 h-5 w-5 text-emerald-600" />
+                  Driver's Rating Distribution
+                </CardTitle>
+                <CardDescription className="text-emerald-700">
+                  Percentage of driver's ratings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  {ratingDistribution.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={ratingDistribution}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                        >
+                          {ratingDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#ECFDF5",
+                            borderColor: "#10B981",
+                            borderRadius: "0.5rem",
+                            color: "#065F46",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                          formatter={(value, name, props) => {
+                            const { payload } = props;
+                            return [
+                              `${value} ratings`,
+                              `${name} (${payload.percentage.toFixed(1)}%)`,
+                            ];
+                          }}
+                        />
+                        <Legend
+                          layout="vertical"
+                          align="right"
+                          verticalAlign="middle"
+                          wrapperStyle={{
+                            paddingLeft: "20px",
+                          }}
+                          formatter={(value, entry, index) => {
+                            const { payload } = entry;
+                            return (
+                              <span className="text-emerald-800">
+                                {payload.name} ({payload.value})
+                              </span>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex justify-center items-center h-full text-emerald-700">
+                      No rating data available
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </>
       )}
 
@@ -583,17 +611,9 @@ export default function DashboardPage() {
       <Dialog open={showAIModal} onOpenChange={setShowAIModal}>
         <DialogContent className="max-w-2xl bg-emerald-50 border-emerald-200">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between text-emerald-900">
-              <div className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-emerald-600" />
-                <span>AI Station Analysis</span>
-              </div>
-              <button 
-                onClick={() => setShowAIModal(false)}
-                className="p-1 rounded-full hover:bg-emerald-100"
-              >
-                <X className="h-5 w-5 text-emerald-600" />
-              </button>
+            <DialogTitle className="flex items-center gap-2 text-emerald-900">
+              <Activity className="h-5 w-5 text-emerald-600" />
+              <span>AI Station Analysis</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -604,9 +624,6 @@ export default function DashboardPage() {
                   <h3 className="text-lg font-medium text-emerald-900 mb-1">
                     {aiSuggestion.name}
                   </h3>
-                  <p className="text-sm text-emerald-700">
-                    TIN: {aiSuggestion.tinNumber}
-                  </p>
                 </div>
                 <div className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(aiSuggestion.category)}`}>
                   {aiSuggestion.category}
@@ -632,11 +649,11 @@ export default function DashboardPage() {
 
               <div className="space-y-3">
                 <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Analysis</h4>
+                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Detailed Analysis</h4>
                   <p className="text-emerald-800">{aiSuggestion.reason}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Recommendations</h4>
+                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Actionable Recommendations</h4>
                   <p className="text-emerald-800">{aiSuggestion.suggestion}</p>
                 </div>
               </div>

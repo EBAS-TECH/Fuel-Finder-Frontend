@@ -31,6 +31,7 @@ import DeligatedashboardLayout from "./pages/ministrydeligate/DeligatedashboardL
 import DelegateStationsPage from "./pages/ministrydeligate/StationsPage";
 import DelegateProfilePage from "./pages/ministrydeligate/ProfilePage";
 import ForgotPassword from "./pages/ForgotPassword";
+import DriverDashboard from "./pages/user/DriverDashboard";
 
 // Create query client
 const queryClient = new QueryClient();
@@ -84,6 +85,11 @@ const App = () => {
               <Route path="profile" element={<DelegateProfilePage />} />
               <Route path="stations" element={<DelegateStationsPage />} />
               <Route path="stations/:id" element={<DelegateStationDetailPage />} />
+            </Route>
+
+            {/* Driver Routes */}
+            <Route path="/driver">
+              <Route path="dashboard" element={<DriverDashboard />} />
             </Route>
 
             {/* Catch-all route */}
