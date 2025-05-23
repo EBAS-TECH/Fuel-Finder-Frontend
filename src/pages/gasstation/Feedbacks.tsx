@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +74,7 @@ const Feedbacks = () => {
   const [selectedFilter, setSelectedFilter] = useState("Stars");
   const [station, setStation] = useState<Station | null>(null);
   const [date, setDate] = useState<Date>();
+  const popoverTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Fetch station, feedback, and user data
   useEffect(() => {
@@ -282,7 +283,7 @@ const Feedbacks = () => {
                 </SelectContent>
               </Select>
               <Popover>
-                <PopoverTrigger asChild>
+                <PopoverTrigger asChild ref={popoverTriggerRef}>
                   <Button
                     variant={"outline"}
                     className="w-[180px] justify-start text-left font-normal h-8 text-xs bg-white hover:bg-fuelGreen-400 hover:text-white"
@@ -297,7 +298,12 @@ const Feedbacks = () => {
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={(selectedDate) => {
+                      setDate(selectedDate);
+                      if (popoverTriggerRef.current) {
+                        popoverTriggerRef.current.click();
+                      }
+                    }}
                     initialFocus
                   />
                 </PopoverContent>

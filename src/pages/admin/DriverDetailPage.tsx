@@ -65,6 +65,7 @@ export default function DriverDetailPage() {
   const [sort, setSort] = useState("newest");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [starFilter, setStarFilter] = useState<number | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const itemsPerPage = 3;
 
   const authToken =
@@ -205,6 +206,11 @@ export default function DriverDetailPage() {
       ));
   };
 
+  const handleDateRangeSelect = (range: DateRange | undefined) => {
+    setDateRange(range);
+    setIsCalendarOpen(false); // Close the calendar after selection
+  };
+
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
   if (!driver) return <div className="p-6">Driver not found</div>;
@@ -282,7 +288,7 @@ export default function DriverDetailPage() {
                     </SelectContent>
                   </Select>
 
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant={"outline"}
@@ -308,8 +314,8 @@ export default function DriverDetailPage() {
                         mode="range"
                         defaultMonth={dateRange?.from}
                         selected={dateRange}
-                        onSelect={setDateRange}
-                        numberOfMonths={2}
+                        onSelect={handleDateRangeSelect}
+                        numberOfMonths={1} // Display only one month
                       />
                     </PopoverContent>
                   </Popover>
