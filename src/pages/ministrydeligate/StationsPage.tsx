@@ -1,4 +1,4 @@
-import { useState, useEffect, KeyboardEvent } from "react";
+import { useState, useEffect, KeyboardEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,6 +61,9 @@ const DelegateStationsPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const startDatePopoverTriggerRef = useRef<HTMLButtonElement>(null);
+  const endDatePopoverTriggerRef = useRef<HTMLButtonElement>(null);
+
   const totalAvailableHours = filteredStations.reduce(
     (sum, station) => sum + Math.floor(station.availaleHour),
     0
@@ -118,7 +121,7 @@ const DelegateStationsPage = () => {
     }
 
     if (rank !== "all") {
-      filtered = filtered.filter(station => 
+      filtered = filtered.filter(station =>
         station.category.toLowerCase() === rank.toLowerCase()
       );
     }
@@ -158,7 +161,7 @@ const DelegateStationsPage = () => {
     }
 
     await fetchStations(startDate, endDate);
-    
+
     toast({
       title: "Filter Applied",
       description: `Showing data from ${format(startDate, 'MMM dd, yyyy')} to ${format(endDate, 'MMM dd, yyyy')}`,
@@ -250,7 +253,7 @@ const DelegateStationsPage = () => {
     // Dark green theme
     const headerColor = [0, 100, 0]; // Dark green
     const alternateRowColor = [240, 255, 240]; // Light green
-    
+
     // Title and metadata
     doc.setFontSize(18);
     doc.setTextColor(0, 0, 0);
@@ -399,8 +402,8 @@ const DelegateStationsPage = () => {
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            <Select 
-              value={rankFilter} 
+            <Select
+              value={rankFilter}
               onValueChange={handleRankFilterChange}
             >
               <SelectTrigger className="w-[180px] bg-white border text-gray-700">
@@ -415,7 +418,7 @@ const DelegateStationsPage = () => {
             </Select>
 
             <Popover>
-              <PopoverTrigger asChild>
+              <PopoverTrigger asChild ref={startDatePopoverTriggerRef}>
                 <Button
                   variant="outline"
                   className="bg-white border text-gray-700 justify-start text-left font-normal"
@@ -431,7 +434,9 @@ const DelegateStationsPage = () => {
                   onSelect={(date) => {
                     if (date) {
                       setStartDate(date);
-                      document.body.click();
+                      if (startDatePopoverTriggerRef.current) {
+                        startDatePopoverTriggerRef.current.click();
+                      }
                     }
                   }}
                   initialFocus
@@ -440,7 +445,7 @@ const DelegateStationsPage = () => {
             </Popover>
 
             <Popover>
-              <PopoverTrigger asChild>
+              <PopoverTrigger asChild ref={endDatePopoverTriggerRef}>
                 <Button
                   variant="outline"
                   className="bg-white border text-gray-700 justify-start text-left font-normal"
@@ -456,7 +461,9 @@ const DelegateStationsPage = () => {
                   onSelect={(date) => {
                     if (date) {
                       setEndDate(date);
-                      document.body.click();
+                      if (endDatePopoverTriggerRef.current) {
+                        endDatePopoverTriggerRef.current.click();
+                      }
                     }
                   }}
                   initialFocus

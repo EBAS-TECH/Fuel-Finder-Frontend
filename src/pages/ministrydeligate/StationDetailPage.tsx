@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import {
   ChevronLeft,
@@ -83,6 +83,10 @@ export default function StationDetailPage() {
   const [fuelAvailabilityData, setFuelAvailabilityData] = useState<FuelAvailability[]>([]);
   const [originalFuelAvailabilityData, setOriginalFuelAvailabilityData] = useState<FuelAvailability[]>([]);
   const { toast } = useToast();
+
+  const feedbackDatePopoverTriggerRef = useRef<HTMLButtonElement>(null);
+  const startDatePopoverTriggerRef = useRef<HTMLButtonElement>(null);
+  const endDatePopoverTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const fetchStationDetails = async () => {
@@ -267,7 +271,6 @@ export default function StationDetailPage() {
       filtered = filtered.filter(item => {
         const upTime = new Date(item.up_time);
         if (!item.down_time) {
-          // If still available, include it only if upTime is within the range
           return upTime <= endDate;
         }
         const downTime = new Date(item.down_time);
@@ -467,7 +470,7 @@ export default function StationDetailPage() {
                   </Select>
 
                   <Popover>
-                    <PopoverTrigger asChild>
+                    <PopoverTrigger asChild ref={feedbackDatePopoverTriggerRef}>
                       <Button variant="outline" className="w-36 border border-gray-200 text-sm">
                         <CalendarDays className="h-4 w-4 mr-2" />
                         {feedbackDate ? format(feedbackDate, "MMM dd") : "Filter by Date"}
@@ -477,7 +480,12 @@ export default function StationDetailPage() {
                       <Calendar
                         mode="single"
                         selected={feedbackDate}
-                        onSelect={(date) => setFeedbackDate(date || undefined)}
+                        onSelect={(date) => {
+                          setFeedbackDate(date || undefined);
+                          if (feedbackDatePopoverTriggerRef.current) {
+                            feedbackDatePopoverTriggerRef.current.click();
+                          }
+                        }}
                         initialFocus
                       />
                       {feedbackDate && (
@@ -529,52 +537,54 @@ export default function StationDetailPage() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between mt-4">
-                <div></div>
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage > 1) handlePageChange(currentPage - 1);
-                        }}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                    {[1, 2].map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
+              {feedbackData.length > 3 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div></div>
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            handlePageChange(page);
+                            if (currentPage > 1) handlePageChange(currentPage - 1);
                           }}
-                          isActive={currentPage === page}
-                          className={
-                            currentPage === page
-                              ? "bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center"
-                              : "bg-gray-200 text-gray-600 w-8 h-8 rounded-full flex items-center justify-center"
-                          }
-                        >
-                          {page}
-                        </PaginationLink>
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
                       </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage < 2) handlePageChange(currentPage + 1);
-                        }}
-                        className={currentPage === 2 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
+                      {[1, 2].map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(page);
+                            }}
+                            isActive={currentPage === page}
+                            className={
+                              currentPage === page
+                                ? "bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center"
+                                : "bg-gray-200 text-gray-600 w-8 h-8 rounded-full flex items-center justify-center"
+                            }
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < 2) handlePageChange(currentPage + 1);
+                          }}
+                          className={currentPage === 2 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -593,7 +603,7 @@ export default function StationDetailPage() {
               </SelectContent>
             </Select>
             <Popover>
-              <PopoverTrigger asChild>
+              <PopoverTrigger asChild ref={startDatePopoverTriggerRef}>
                 <Button variant="outline" className="w-32 border border-gray-200">
                   {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
                 </Button>
@@ -602,13 +612,18 @@ export default function StationDetailPage() {
                 <Calendar
                   mode="single"
                   selected={startDate}
-                  onSelect={setStartDate}
+                  onSelect={(date) => {
+                    setStartDate(date || undefined);
+                    if (startDatePopoverTriggerRef.current) {
+                      startDatePopoverTriggerRef.current.click();
+                    }
+                  }}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
             <Popover>
-              <PopoverTrigger asChild>
+              <PopoverTrigger asChild ref={endDatePopoverTriggerRef}>
                 <Button variant="outline" className="w-32 border border-gray-200">
                   {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
                 </Button>
@@ -617,7 +632,12 @@ export default function StationDetailPage() {
                 <Calendar
                   mode="single"
                   selected={endDate}
-                  onSelect={setEndDate}
+                  onSelect={(date) => {
+                    setEndDate(date || undefined);
+                    if (endDatePopoverTriggerRef.current) {
+                      endDatePopoverTriggerRef.current.click();
+                    }
+                  }}
                   initialFocus
                 />
               </PopoverContent>
@@ -635,7 +655,7 @@ export default function StationDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fuelAvailabilityData.map((item, index) => (
+              {fuelAvailabilityData.slice((currentPage - 1) * 5, currentPage * 5).map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{item.fuel_type}</TableCell>
@@ -664,7 +684,7 @@ export default function StationDetailPage() {
           </Table>
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-500">
-              Showing 1 - {fuelAvailabilityData.length} of {fuelAvailabilityData.length}
+              Showing {Math.min((currentPage - 1) * 5 + 1, fuelAvailabilityData.length)} - {Math.min(currentPage * 5, fuelAvailabilityData.length)} of {fuelAvailabilityData.length}
             </div>
             <Pagination>
               <PaginationContent>
@@ -691,33 +711,25 @@ export default function StationDetailPage() {
                     </svg>
                   </button>
                 </PaginationItem>
-                <PaginationItem>
-                  <button
-                    onClick={() => handlePageChange(1)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      currentPage === 1 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    1
-                  </button>
-                </PaginationItem>
-                <PaginationItem>
-                  <button
-                    onClick={() => handlePageChange(2)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      currentPage === 2 ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    2
-                  </button>
-                </PaginationItem>
+                {Array.from({ length: Math.ceil(fuelAvailabilityData.length / 5) }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}>
+                    <button
+                      onClick={() => handlePageChange(page)}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        currentPage === page ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </PaginationItem>
+                ))}
                 <PaginationItem>
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     className={`p-1.5 rounded-full ${
-                      currentPage === 2 ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
+                      currentPage === Math.ceil(fuelAvailabilityData.length / 5) ? "bg-gray-100 text-gray-400" : "bg-gray-200 text-gray-600"
                     }`}
-                    disabled={currentPage === 2}
+                    disabled={currentPage === Math.ceil(fuelAvailabilityData.length / 5)}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"

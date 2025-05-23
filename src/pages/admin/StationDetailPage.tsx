@@ -548,11 +548,14 @@ export default function StationDetailPage() {
                         {feedbackDate ? format(feedbackDate, "MMM dd") : "Filter by Date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="end">
                       <Calendar
                         mode="single"
                         selected={feedbackDate}
-                        onSelect={(date) => setFeedbackDate(date || undefined)}
+                        onSelect={(date) => {
+                          setFeedbackDate(date || undefined);
+                          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                        }}
                         initialFocus
                       />
                       {feedbackDate && (
@@ -560,7 +563,10 @@ export default function StationDetailPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFeedbackDate(undefined)}
+                            onClick={() => {
+                              setFeedbackDate(undefined);
+                              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                            }}
                           >
                             Clear Date
                           </Button>
@@ -675,11 +681,14 @@ export default function StationDetailPage() {
                   {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={startDate}
-                  onSelect={setStartDate}
+                  onSelect={(date) => {
+                    setStartDate(date || undefined);
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                  }}
                   initialFocus
                 />
               </PopoverContent>
@@ -690,11 +699,14 @@ export default function StationDetailPage() {
                   {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={endDate}
-                  onSelect={setEndDate}
+                  onSelect={(date) => {
+                    setEndDate(date || undefined);
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                  }}
                   initialFocus
                 />
               </PopoverContent>
