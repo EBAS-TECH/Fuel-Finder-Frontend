@@ -46,6 +46,8 @@ const FuelAvailability = () => {
   const [selectedFuel, setSelectedFuel] = useState("all");
   const [stationId, setStationId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
 
   // Constants for pagination
   const ITEMS_PER_PAGE = 5;
@@ -482,7 +484,7 @@ const FuelAvailability = () => {
                   </SelectContent>
                 </Select>
 
-                <Popover>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
@@ -500,13 +502,16 @@ const FuelAvailability = () => {
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={setStartDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        setStartDateOpen(false); // Close popover after selection
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
 
-                <Popover>
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
@@ -522,7 +527,10 @@ const FuelAvailability = () => {
                     <Calendar
                       mode="single"
                       selected={endDate}
-                      onSelect={setEndDate}
+                      onSelect={(date) => {
+                        setEndDate(date);
+                        setEndDateOpen(false); // Close popover after selection
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
