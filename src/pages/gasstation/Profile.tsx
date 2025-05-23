@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Edit, Eye, EyeOff, User, MapPin, FileText, Navigation } from "lucide-react";
+import { Edit, Eye, EyeOff, User, MapPin, FileText, Navigation, Upload } from "lucide-react";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Profile = () => {
@@ -13,10 +13,12 @@ const Profile = () => {
   const [station, setStation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isLogoDialogOpen, setIsLogoDialogOpen] = useState(false);
   const [editedUser, setEditedUser] = useState({
     first_name: "",
     last_name: "",
     username: "",
+    email: ""
   });
   const [passwordData, setPasswordData] = useState({
     oldPassword: "",
@@ -28,11 +30,15 @@ const Profile = () => {
     newPassword: false,
     confirmPassword: false,
   });
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState("");
   const [errors, setErrors] = useState({
     first_name: "",
     last_name: "",
-    username: ""
+    username: "",
+    email: ""
   });
+  const [isLogoLoading, setIsLogoLoading] = useState(false);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -63,11 +69,6 @@ const Profile = () => {
       const { data } = await response.json();
       if (data) {
         setStation(data);
-        setEditedUser({
-          first_name: data.user?.first_name || "",
-          last_name: data.user?.last_name || "",
-          username: data.user?.username || "",
-        });
       }
     } catch (error) {
       toast({
@@ -90,6 +91,16 @@ const Profile = () => {
     return () => window.removeEventListener("userUpdated", handleUserUpdated);
   }, []);
 
+  const handleEditClick = () => {
+    setEditedUser({
+      first_name: station.user?.first_name || "",
+      last_name: station.user?.last_name || "",
+      username: station.user?.username || "",
+      email: station.user?.email || ""
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditedUser(prev => ({ ...prev, [name]: value }));
@@ -110,7 +121,9 @@ const Profile = () => {
       first_name: !editedUser.first_name.trim() ? "First name is required" : "",
       last_name: !editedUser.last_name.trim() ? "Last name is required" : "",
       username: !editedUser.username.trim() ? "Username is required" : 
-               editedUser.username.length < 3 ? "Username must be at least 3 characters" : ""
+               editedUser.username.length < 3 ? "Username must be at least 3 characters" : "",
+      email: !editedUser.email.trim() ? "Email is required" : 
+             !/^\S+@\S+\.\S+$/.test(editedUser.email) ? "Invalid email format" : ""
     };
     setErrors(newErrors);
     return !Object.values(newErrors).some(error => error);
@@ -128,6 +141,7 @@ const Profile = () => {
           first_name: editedUser.first_name,
           last_name: editedUser.last_name,
           username: editedUser.username,
+          email: editedUser.email
         })
       });
 
@@ -143,6 +157,7 @@ const Profile = () => {
         first_name: editedUser.first_name,
         last_name: editedUser.last_name,
         username: editedUser.username,
+        email: editedUser.email
       }));
 
       window.dispatchEvent(new CustomEvent("userUpdated"));
@@ -182,6 +197,56 @@ const Profile = () => {
     }
   };
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleLogoUpload = async () => {
+    if (!logoFile) {
+      toast({ title: "Error", description: "Please select a logo file first", variant: "destructive" });
+      return;
+    }
+
+    setIsLogoLoading(true);
+    const formData = new FormData();
+    formData.append("logo", logoFile);
+
+    try {
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      
+      const response = await fetch(
+        `${API_BASE_URL}/api/station/profile/change-logo/${station.id}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update logo");
+      }
+
+      setStation(prev => ({ ...prev, logo: data.logo }));
+      setLogoFile(null);
+      setLogoPreview("");
+      setIsLogoDialogOpen(false);
+      toast({ title: "Success", description: "Logo updated successfully" });
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsLogoLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -217,7 +282,11 @@ const Profile = () => {
             <div className="flex justify-end mb-2">
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="border-emerald-500 text-emerald-500 hover:bg-emerald-50">
+                  <Button 
+                    variant="outline" 
+                    className="border-emerald-500 text-emerald-500 hover:bg-emerald-50"
+                    onClick={handleEditClick}
+                  >
                     <Edit className="h-4 w-4 mr-2" /> Edit
                   </Button>
                 </DialogTrigger>
@@ -270,6 +339,21 @@ const Profile = () => {
                       />
                       {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
                     </div>
+                    <div>
+                      <label htmlFor="email" className="text-sm font-medium mb-1 block">
+                        Email *
+                      </label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={editedUser.email}
+                        onChange={handleInputChange}
+                        required
+                        className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
+                      />
+                      {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                    </div>
                   </div>
                   <div className="flex justify-end">
                     <Button
@@ -285,7 +369,7 @@ const Profile = () => {
             </div>
 
             <div className="flex flex-col items-center mb-6">
-              <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
+              <div className="relative w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
                 {station.logo && (
                   <img
                     src={station.logo}
@@ -293,6 +377,12 @@ const Profile = () => {
                     className="w-full h-full object-cover"
                   />
                 )}
+                <button
+                  onClick={() => setIsLogoDialogOpen(true)}
+                  className="absolute bottom-0 right-0 bg-emerald-500 text-white p-2 rounded-full hover:bg-emerald-600"
+                >
+                  <Edit className="h-6 w-6" />
+                </button>
               </div>
               <h2 className="text-xl font-medium mb-1">{station.en_name}</h2>
               <p className="text-gray-500 mb-1">{station.am_name}</p>
@@ -430,6 +520,57 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Logo Upload Dialog */}
+      <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Update Station Logo</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col items-center">
+              {logoPreview ? (
+                <img
+                  src={logoPreview}
+                  alt="Logo preview"
+                  className="w-32 h-32 rounded-full object-cover mb-4"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <Upload className="h-10 w-10 text-gray-400" />
+                </div>
+              )}
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="w-full"
+                disabled={isLogoLoading}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLogoDialogOpen(false);
+                setLogoFile(null);
+                setLogoPreview("");
+              }}
+              disabled={isLogoLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+              onClick={handleLogoUpload}
+              disabled={isLogoLoading}
+            >
+              {isLogoLoading ? "Uploading..." : "Upload Logo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

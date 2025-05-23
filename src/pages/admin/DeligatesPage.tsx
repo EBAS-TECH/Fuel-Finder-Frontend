@@ -178,6 +178,7 @@ export default function DelegatesPage() {
           first_name: selectedDelegate.first_name,
           last_name: selectedDelegate.last_name,
           username: selectedDelegate.username,
+          email: selectedDelegate.email
         }),
       });
 
@@ -444,7 +445,7 @@ export default function DelegatesPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">
-                    Email
+                    Email *
                   </label>
                   <Input
                     name="email"
@@ -452,7 +453,7 @@ export default function DelegatesPage() {
                     placeholder="Enter email"
                     value={selectedDelegate?.email || ""}
                     onChange={handleInputChange}
-                    disabled
+                    required
                   />
                 </div>
               </div>
