@@ -1,152 +1,71 @@
-import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import logoImage from '@/assets/logo.png'; // Added this import
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import StationImage from "@/assets/image.png";
 
-const DriverDashboardLayout = () => {
-  const location = useLocation();
-  const [user] = useState({
-    name: "Bereket Nigussie",
-    role: "User",
-    avatar: "/lovable-uploads/daf30b32-b807-4f23-92a9-fa24c23000cb.png",
-  });
+const DriverDashboard = () => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  useEffect(() => {
+    toast({
+      title: "Web Dashboard Coming Soon",
+      description: "Please use our mobile app for full functionality",
+    });
+  }, [toast]);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white rounded-lg m-0 md:m-4 shadow-sm overflow-hidden">
-        {/* Header */}
-        <header className="border-b p-4 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-4">
-            {/* Replaced Logo component with img tag */}
-            <Link to="/">
-              <img
-                src={logoImage}
-                alt="Fuel Finder Logo"
-                className="w-20 h-auto" // Maintained same size as original
-              />
-            </Link>
-            <div className="relative w-64 hidden md:block">
-              <Input
-                type="text"
-                placeholder="Search..."
-                className="pl-10 bg-fuelGreen-50 border-none h-10"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+    <div className="min-h-screen bg-fuelGreen-50 flex items-center justify-center p-4">
+      <div className="container mx-auto max-w-6xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="order-2 lg:order-1 flex justify-center animate-fade-in">
+            <img
+              src={StationImage}
+              alt="Fuel Finder Mobile App"
+              className="max-h-[80vh] object-contain rounded-3xl shadow-lg"
+            />
+          </div>
+
+          <div className="order-1 lg:order-2 animate-fade-in animate-delay-200">
+            <h1 className="text-3xl md:text-4xl font-bold mb-6">
+              <span className="text-fuelGreen-500">Driver Dashboard</span>
+              <span className="text-fuelBlue-500"> Coming Soon</span>
+            </h1>
+
+            <p className="text-gray-600 mb-8 text-lg">
+              Our web dashboard for drivers is currently under development. 
+              For now, please use our mobile app to access all driver features 
+              including real-time fuel station locations, availability updates, 
+              and navigation.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <a
+                href="#"
+                className="inline-flex items-center bg-fuelGreen-500 hover:bg-fuelGreen-600 text-white font-medium py-3 px-6 rounded-md transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 512 512"
+                  className="w-6 h-6 mr-2 fill-current"
+                >
+                  <path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z" />
+                </svg>
+                Get it On Google Play
+              </a>
+
+              <button
+                onClick={() => navigate("/")}
+                className="inline-flex items-center border border-fuelGreen-500 text-fuelGreen-500 hover:bg-fuelGreen-50 font-medium py-3 px-6 rounded-md transition-colors"
+              >
+                Back to Home
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-right mr-2">
-              <p className="text-fuelGreen-500 font-medium">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
-            </div>
-            <Avatar>
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-          </div>
-        </header>
-
-        <div className="flex flex-col md:flex-row">
-          {/* Sidebar */}
-          <aside className="w-full md:w-56 bg-white p-4 md:border-r">
-            <nav className="space-y-1">
-              <Link
-                to="/gas-station/dashboard"
-                className={`flex items-center px-4 py-3 rounded-md ${
-                  isActive("/gas-station/dashboard")
-                    ? "bg-fuelGreen-100 text-fuelGreen-500"
-                    : "text-gray-600 hover:bg-fuelGreen-50"
-                }`}
-              >
-                <svg
-                  className="w-5 h-5 mr-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                </svg>
-                <span>Dashboard</span>
-              </Link>
-
-              <Link
-                to="/gas-station/fuel-availability"
-                className={`flex items-center px-4 py-3 rounded-md ${
-                  isActive("/gas-station/fuel-availability")
-                    ? "bg-fuelGreen-100 text-fuelGreen-500"
-                    : "text-gray-600 hover:bg-fuelGreen-50"
-                }`}
-              >
-                <svg
-                  className="w-5 h-5 mr-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                    clipRule="evenodd"
-                  ></path>
-                </svg>
-                <span>Fuel Availability</span>
-              </Link>
-
-              <Link
-                to="/gas-station/feedbacks"
-                className={`flex items-center px-4 py-3 rounded-md ${
-                  isActive("/gas-station/feedbacks")
-                    ? "bg-fuelGreen-100 text-fuelGreen-500"
-                    : "text-gray-600 hover:bg-fuelGreen-50"
-                }`}
-              >
-                <svg
-                  className="w-5 h-5 mr-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path>
-                  <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"></path>
-                </svg>
-                <span>Feedbacks</span>
-              </Link>
-
-              <Link
-                to="/gas-station/profile"
-                className={`flex items-center px-4 py-3 rounded-md ${
-                  isActive("/gas-station/profile")
-                    ? "bg-fuelGreen-100 text-fuelGreen-500"
-                    : "text-gray-600 hover:bg-fuelGreen-50"
-                }`}
-              >
-                <svg
-                  className="w-5 h-5 mr-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clipRule="evenodd"
-                  ></path>
-                </svg>
-                <span>Profile</span>
-              </Link>
-            </nav>
-          </aside>
-
-          {/* Main content */}
-          <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
-          </main>
         </div>
       </div>
     </div>
   );
 };
 
-export default DriverDashboardLayout;
+export default DriverDashboard;

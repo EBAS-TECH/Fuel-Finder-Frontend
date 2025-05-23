@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import PrimaryButton from "../PrimaryButton";
 import { Link } from "react-router-dom";
-import dashboardImage from "../../assets/image.png";
+import dashboardImage from "../../assets/mock.png";
 
 const Hero = () => {
   return (
