@@ -48,6 +48,7 @@ const DriversPage: React.FC = () => {
     firstName: "",
     lastName: "",
     username: "",
+    email: ""
   });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -182,6 +183,7 @@ const DriversPage: React.FC = () => {
       firstName: driver.firstName,
       lastName: driver.lastName,
       username: driver.username,
+      email: driver.email
     });
     setEditDialogOpen(true);
   };
@@ -211,6 +213,7 @@ const DriversPage: React.FC = () => {
           first_name: editForm.firstName,
           last_name: editForm.lastName,
           username: editForm.username,
+          email: editForm.email
         }),
       });
 
@@ -227,7 +230,8 @@ const DriversPage: React.FC = () => {
                 ...driver, 
                 firstName: editForm.firstName,
                 lastName: editForm.lastName,
-                username: editForm.username
+                username: editForm.username,
+                email: editForm.email
               }
             : driver
         )
@@ -369,6 +373,18 @@ const DriversPage: React.FC = () => {
               <Input
                 name="username"
                 value={editForm.username}
+                onChange={handleEditFormChange}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Email *
+              </label>
+              <Input
+                name="email"
+                type="email"
+                value={editForm.email}
                 onChange={handleEditFormChange}
                 required
               />

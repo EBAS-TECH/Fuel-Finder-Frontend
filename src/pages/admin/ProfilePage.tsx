@@ -39,6 +39,7 @@ export default function ProfilePage() {
     firstName: "",
     lastName: "",
     username: "",
+    email: "",
   });
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +68,7 @@ export default function ProfilePage() {
             firstName: serverData.first_name,
             lastName: serverData.last_name,
             username: serverData.username,
+            email: serverData.email,
           });
 
           // Update local storage with fresh data
@@ -90,6 +92,7 @@ export default function ProfilePage() {
             firstName: parsedUser.first_name,
             lastName: parsedUser.last_name,
             username: parsedUser.username,
+            email: parsedUser.email,
           });
         }
       } catch (error) {
@@ -185,6 +188,7 @@ export default function ProfilePage() {
           first_name: editedUser.firstName,
           last_name: editedUser.lastName,
           username: editedUser.username,
+          email: editedUser.email,
         }),
       });
 
@@ -200,6 +204,7 @@ export default function ProfilePage() {
         first_name: editedUser.firstName,
         last_name: editedUser.lastName,
         username: editedUser.username,
+        email: editedUser.email,
       };
 
       // Determine which storage was used originally
@@ -354,15 +359,16 @@ export default function ProfilePage() {
                           htmlFor="email"
                           className="text-sm font-medium mb-1 block"
                         >
-                          Email
+                          Email *
                         </label>
                         <Input
                           id="email"
                           name="email"
                           type="email"
-                          value={userData.email}
-                          disabled
-                          className="bg-gray-100 cursor-not-allowed"
+                          value={editedUser.email}
+                          onChange={handleProfileChange}
+                          required
+                          className="bg-[#F2FCE2] focus:ring-emerald-200 focus:border-emerald-300"
                         />
                       </div>
                       <div>
