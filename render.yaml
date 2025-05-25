@@ -1,0 +1,11 @@
+# render.yaml
+services:
+  - type: web
+    name: fuel-finder-frontend  # Your service name
+    staticPublishPath: ./dist   # Your Vite build folder
+    env: node
+    buildCommand: npm run build  # Command to build your app
+    routes:
+      - type: rewrite
+        source: /(.*)          # Catch all routes (e.g., /login, /dashboard)
+        destination: /index.html  # Serve index.html for all routes
