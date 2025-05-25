@@ -15,12 +15,12 @@ export default defineConfig({
         target: "https://fuel-finder-backend.onrender.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
-        secure: false // Only for development with HTTPS
-      }
-    }
+        secure: false, // Only for development with HTTPS
+      },
+    },
   },
   build: {
-    outDir: "../server/dist",
-    emptyOutDir: true
-  }
+    outDir: "dist",
+    emptyOutDir: true,
+  },
 });
