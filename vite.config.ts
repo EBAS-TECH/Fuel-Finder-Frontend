@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -11,6 +10,17 @@ export default defineConfig({
     },
   },
   server: {
-    open: true, // Automatically opens browser on server start
+    proxy: {
+      "/api": {
+        target: "https://fuel-finder-backend.onrender.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+        secure: false // Only for development with HTTPS
+      }
+    }
   },
+  build: {
+    outDir: "../server/dist",
+    emptyOutDir: true
+  }
 });

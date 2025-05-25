@@ -104,46 +104,27 @@ export default function DashboardPage() {
         setStationId(stationData.data.id);
         setStationDetails(stationData.data);
 
-        // Fetch aggregated feedback data
+        // Fetch feedback data for this station
         const feedbackResponse = await fetch(
-          `${API_BASE_URL}/api/feedback/rate`,
+          `${API_BASE_URL}/api/feedback/station/${stationData.data.id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
         const feedbackData = await feedbackResponse.json();
-        setFeedbackData({
-          ...feedbackData.data,
-          average_rate: parseFloat(feedbackData.data.average_rate).toFixed(1),
-        });
 
-        // Simulate the response from the backend for feedback data
-        const mockFeedbackData = {
-          success: true,
-          data: [
-            {
-              id: "0ce51c5d-14df-45e7-880b-1ab8b443e343",
-              user_id: "c93bef77-2255-4d24-891d-5de0d406a02f",
-              station_id: "03ac2c68-9604-4b04-bdb6-bebf6ed3421a",
-              rating: 5,
-              comment: "Nice!",
-              created_at: "2025-05-17T14:27:02.848Z",
-              updated_at: null,
-            },
-            {
-              id: "a1b2c3d4-0007-4a8b-b007-111122223333",
-              user_id: "02d55131-3cd0-4580-956d-577e2f3df462",
-              station_id: "03ac2c68-9604-4b04-bdb6-bebf6ed3421a",
-              rating: 3,
-              comment: "Sometimes out of fuel.",
-              created_at: "2025-05-16T19:09:51.704Z",
-              updated_at: "2025-05-16T19:09:51.704Z",
-            },
-          ],
-        };
+        if (feedbackData.success && feedbackData.data) {
+          // Calculate average rating and total feedback
+          const totalRatings = feedbackData.data.length;
+          const sumRatings = feedbackData.data.reduce((sum, feedback) => sum + feedback.rating, 0);
+          const averageRating = totalRatings > 0 ? (sumRatings / totalRatings).toFixed(1) : 0;
 
-        // Process rating distribution data
-        if (mockFeedbackData.data && mockFeedbackData.data.length > 0) {
+          setFeedbackData({
+            average_rate: averageRating,
+            total: totalRatings
+          });
+
+          // Process rating distribution data
           const ratingCounts = {
             5: 0,
             4: 0,
@@ -152,14 +133,13 @@ export default function DashboardPage() {
             1: 0,
           };
 
-          mockFeedbackData.data.forEach((feedback) => {
+          feedbackData.data.forEach((feedback) => {
             const rating = Math.floor(feedback.rating);
             if (rating >= 1 && rating <= 5) {
               ratingCounts[rating]++;
             }
           });
 
-          const totalRatings = mockFeedbackData.data.length;
           const ratingDistributionData = [5, 4, 3, 2, 1].map((rating) => ({
             name: `${rating} Star${rating > 1 ? "s" : ""}`,
             value: ratingCounts[rating],
