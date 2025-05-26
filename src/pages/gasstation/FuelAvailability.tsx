@@ -161,9 +161,7 @@ const FuelAvailability = () => {
       const fuelsWithHours = latestRecords.map((fuel: FuelAvailability) => ({
         ...fuel,
         available_hrs: fuel.availability_duration
-          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(
-              2
-            )
+          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2)
           : "0.00",
       }));
 
@@ -382,7 +380,7 @@ const FuelAvailability = () => {
         availability_duration: item.total_milliseconds,
         available_hrs: (
           parseFloat(item.total_milliseconds) /
-          (1000 * 60)
+          (1000 * 60 * 60) // Convert milliseconds to hours
         ).toFixed(2),
       }));
 
@@ -553,7 +551,7 @@ const FuelAvailability = () => {
                     <th className="py-3 px-4 text-left">Fuel Name</th>
                     <th className="py-3 px-4 text-left">Start Date</th>
                     <th className="py-3 px-4 text-left">End Date</th>
-                    <th className="py-3 px-4 text-left">Available hrs</th>
+                    <th className="py-3 px-4 text-left">Available Hours</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -596,7 +594,7 @@ const FuelAvailability = () => {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-fuelGreen-600 font-medium">
-                            {fuel.available_hrs}
+                            {fuel.available_hrs} hrs
                           </span>
                         </td>
                       </tr>
