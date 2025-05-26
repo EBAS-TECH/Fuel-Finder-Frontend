@@ -1,32 +1,46 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const testimonials = [
   {
     id: 1,
-    text: "OMG! I cannot believe that I have got a brand new landing page after getting appmax. It was super easy to edit and publish! I have got a brand new landing page.",
-    name: "Samuel Terefe",
+    text: "It's very cool app that solved Ethiopian fuel traffic issue. I have used it a lot and it is very useful. I can get and see nearby station and also add by myself.",
+    name: "Biniyam",
     role: "Driver",
     rating: 5
   },
   {
     id: 2,
-    text: "OMG! I cannot believe that I have got a brand new landing page after getting appmax. It was super easy to edit and publish! I have got a brand new landing page.",
-    name: "Samuel Terefe",
+    text: "I am new to this best platform. I fall in love with the Fuel Finder app - precise, good and helpful when I get the near station. I recommend to use it all.",
+    name: "Biruk Wondmenh",
     role: "Driver",
     rating: 5
   },
   {
     id: 3,
-    text: "The Fuel Finder app has completely changed how I manage my daily routes. No more wasting time driving around looking for fuel!",
-    name: "Abeba Mekonnen",
-    role: "Taxi Driver",
+    text: "I have used it since it was published and then it is very good. User responsible and anyone can use it. I can use it perfectly. I recommend it for you. Thanks the Fuel Finder!",
+    name: "Kirubel Dagne",
+    role: "Driver",
     rating: 5
   }
 ];
 
 const Testimonials = () => {
   const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((prevIndex) => 
+        prevIndex === testimonials.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const visibleTestimonials = [
+    testimonials[activeIndex],
+    testimonials[(activeIndex + 1) % testimonials.length]
+  ];
 
   return (
     <section className="py-16 bg-white">
@@ -39,7 +53,7 @@ const Testimonials = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {testimonials.slice(0, 2).map((testimonial) => (
+          {visibleTestimonials.map((testimonial) => (
             <TestimonialCard key={testimonial.id} testimonial={testimonial} />
           ))}
         </div>
@@ -74,7 +88,7 @@ interface TestimonialProps {
 const TestimonialCard = ({ testimonial }: TestimonialProps) => {
   return (
     <div className="bg-white p-8 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow animate-fade-in">
-      <p className="text-gray-600 mb-6">{testimonial.text}</p>
+      <p className="text-gray-600 mb-6 italic">"{testimonial.text}"</p>
       <div className="flex items-center">
         <div className="w-12 h-12 rounded-full bg-gray-200 mr-4 overflow-hidden">
           <img
