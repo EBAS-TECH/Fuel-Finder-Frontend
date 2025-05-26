@@ -37,25 +37,30 @@ import {
   Cell,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Green color palette
 const COLORS = {
-  primary: "#10B981",  // emerald-500
-  light: "#D1FAE5",    // emerald-100
-  dark: "#065F46",     // emerald-800
-  accent: "#059669",   // emerald-600
+  primary: "#10B981", // emerald-500
+  light: "#D1FAE5", // emerald-100
+  dark: "#065F46", // emerald-800
+  accent: "#059669", // emerald-600
   secondary: "#ECFDF5", // emerald-50
-  danger: "#EF4444",   // red-500
-  warning: "#F59E0B",  // amber-500
+  danger: "#EF4444", // red-500
+  warning: "#F59E0B", // amber-500
 };
 
 // Define fuel types and their colors
 const fuelTypeColors = {
-  PETROL: "#10B981",  // emerald-500
-  DIESEL: "#059669",  // emerald-600
+  PETROL: "#10B981", // emerald-500
+  DIESEL: "#059669", // emerald-600
   PREMIUM: "#047857", // emerald-700
   REGULAR: "#34D399", // emerald-400
 };
@@ -116,12 +121,16 @@ export default function DashboardPage() {
         if (feedbackData.success && feedbackData.data) {
           // Calculate average rating and total feedback
           const totalRatings = feedbackData.data.length;
-          const sumRatings = feedbackData.data.reduce((sum, feedback) => sum + feedback.rating, 0);
-          const averageRating = totalRatings > 0 ? (sumRatings / totalRatings).toFixed(1) : 0;
+          const sumRatings = feedbackData.data.reduce(
+            (sum, feedback) => sum + feedback.rating,
+            0
+          );
+          const averageRating =
+            totalRatings > 0 ? (sumRatings / totalRatings).toFixed(1) : 0;
 
           setFeedbackData({
             average_rate: averageRating,
-            total: totalRatings
+            total: totalRatings,
           });
 
           // Process rating distribution data
@@ -140,24 +149,48 @@ export default function DashboardPage() {
             }
           });
 
-          const ratingDistributionData = [5, 4, 3, 2, 1].map((rating) => ({
-            name: `${rating} Star${rating > 1 ? "s" : ""}`,
-            value: ratingCounts[rating],
-            percentage:
-              totalRatings > 0
-                ? (ratingCounts[rating] / totalRatings) * 100
-                : 0,
-            color:
-              rating === 5
-                ? "#10B981"
-                : rating === 4
-                ? "#34D399"
-                : rating === 3
-                ? "#F59E0B"
-                : rating === 2
-                ? "#F97316"
-                : "#EF4444",
-          }));
+          const ratingDistributionData = [
+            {
+              name: "Very Positive",
+              value: ratingCounts[5],
+              percentage:
+                totalRatings > 0 ? (ratingCounts[5] / totalRatings) * 100 : 0,
+              color: "#10B981",
+              stars: 5,
+            },
+            {
+              name: "Positive",
+              value: ratingCounts[4],
+              percentage:
+                totalRatings > 0 ? (ratingCounts[4] / totalRatings) * 100 : 0,
+              color: "#34D399",
+              stars: 4,
+            },
+            {
+              name: "Neutral",
+              value: ratingCounts[3],
+              percentage:
+                totalRatings > 0 ? (ratingCounts[3] / totalRatings) * 100 : 0,
+              color: "#F59E0B",
+              stars: 3,
+            },
+            {
+              name: "Negative",
+              value: ratingCounts[2],
+              percentage:
+                totalRatings > 0 ? (ratingCounts[2] / totalRatings) * 100 : 0,
+              color: "#F97316",
+              stars: 2,
+            },
+            {
+              name: "Very Negative",
+              value: ratingCounts[1],
+              percentage:
+                totalRatings > 0 ? (ratingCounts[1] / totalRatings) * 100 : 0,
+              color: "#EF4444",
+              stars: 1,
+            },
+          ];
 
           setRatingDistribution(ratingDistributionData);
         }
@@ -270,16 +303,67 @@ export default function DashboardPage() {
     }, 1000);
   };
 
+  // Custom tooltip for the rating chart
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-4 rounded-lg shadow-lg border border-emerald-200">
+          <div className="flex items-center gap-2 mb-1">
+            <div
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: data.color }}
+            />
+            <p className="font-semibold text-emerald-900">{data.name}</p>
+          </div>
+          <p className="text-sm text-emerald-700">
+            {data.value} ratings ({data.percentage.toFixed(1)}%)
+          </p>
+          <div className="flex items-center mt-1">
+            {[...Array(data.stars)].map((_, i) => (
+              <Star key={i} className="h-4 w-4 fill-current text-yellow-400" />
+            ))}
+            {[...Array(5 - data.stars)].map((_, i) => (
+              <Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="p-6 bg-emerald-50 min-h-screen">
       {/* Header Section */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-emerald-900">
-            <Droplet className="inline mr-2 h-8 w-8 text-emerald-600" />
-            Station Dashboard
-          </h1>
-          <p className="text-emerald-700">Welcome to your fuel station management hub</p>
+          <div className="flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#176016"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="mr-2"
+            >
+              <line x1="3" x2="15" y1="22" y2="22" />
+              <line x1="4" x2="14" y1="9" y2="9" />
+              <path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18" />
+              <path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
+            </svg>
+            <h1 className="text-3xl font-bold text-emerald-900">
+              Station Dashboard
+            </h1>
+          </div>
+
+          <p className="text-emerald-700">
+            Welcome to your fuel station management hub
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -287,7 +371,9 @@ export default function DashboardPage() {
             className="text-emerald-600 border-emerald-300 hover:bg-emerald-100"
             onClick={refreshData}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
           <Button
@@ -487,7 +573,7 @@ export default function DashboardPage() {
                           `${value} hours`,
                           "Availability",
                         ]}
-                        cursor={{ fill: '#D1FAE5' }}
+                        cursor={{ fill: "#D1FAE5" }}
                       />
                       <Bar
                         dataKey="hours"
@@ -515,10 +601,10 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="text-emerald-900">
                   <Star className="inline mr-2 h-5 w-5 text-emerald-600" />
-                  Driver's Rating Distribution
+                  Customer Feedback Distribution
                 </CardTitle>
                 <CardDescription className="text-emerald-700">
-                  Percentage of driver's ratings
+                  Breakdown of customer feedback ratings
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -535,28 +621,12 @@ export default function DashboardPage() {
                           fill="#8884d8"
                           dataKey="value"
                           nameKey="name"
-                          label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
                         >
                           {ratingDistribution.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#ECFDF5",
-                            borderColor: "#10B981",
-                            borderRadius: "0.5rem",
-                            color: "#065F46",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                          }}
-                          formatter={(value, name, props) => {
-                            const { payload } = props;
-                            return [
-                              `${value} ratings`,
-                              `${name} (${payload.percentage.toFixed(1)}%)`,
-                            ];
-                          }}
-                        />
+                        <Tooltip content={<CustomTooltip />} />
                         <Legend
                           layout="vertical"
                           align="right"
@@ -605,23 +675,31 @@ export default function DashboardPage() {
                     {aiSuggestion.name}
                   </h3>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(aiSuggestion.category)}`}>
+                <div
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(
+                    aiSuggestion.category
+                  )}`}
+                >
                   {aiSuggestion.category}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-1">Rating</h4>
+                  <h4 className="text-sm font-medium text-emerald-600 mb-1">
+                    Rating
+                  </h4>
                   <p className="text-2xl font-bold text-emerald-900">
                     {aiSuggestion.rating}
                     <span className="text-lg text-emerald-600">/5</span>
                   </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-1">Availability</h4>
+                  <h4 className="text-sm font-medium text-emerald-600 mb-1">
+                    Availability
+                  </h4>
                   <p className="text-2xl font-bold text-emerald-900">
-                    {aiSuggestion.availaleHour}
+                    {aiSuggestion.availableHour}
                     <span className="text-lg text-emerald-600"> hours</span>
                   </p>
                 </div>
@@ -629,11 +707,15 @@ export default function DashboardPage() {
 
               <div className="space-y-3">
                 <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Detailed Analysis</h4>
+                  <h4 className="text-sm font-medium text-emerald-600 mb-2">
+                    Detailed Analysis
+                  </h4>
                   <p className="text-emerald-800">{aiSuggestion.reason}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-2">Actionable Recommendations</h4>
+                  <h4 className="text-sm font-medium text-emerald-600 mb-2">
+                    Actionable Recommendations
+                  </h4>
                   <p className="text-emerald-800">{aiSuggestion.suggestion}</p>
                 </div>
               </div>
