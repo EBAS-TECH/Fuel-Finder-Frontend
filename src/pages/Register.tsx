@@ -14,6 +14,10 @@ interface StationValidationResponse {
   last_name?: string;
 }
 
+interface ApiErrorResponse {
+  error?: string;
+}
+
 const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -54,44 +58,31 @@ const Register = () => {
       [name]: value,
     }));
 
-    // Check password strength when password field changes
     if (name === "password") {
       checkPasswordStrength(value);
     }
   };
 
   const checkPasswordStrength = (password: string) => {
-    // Reset if empty
     if (!password) {
       setPasswordStrength({ score: 0, message: "" });
       return;
     }
 
-    // Initialize variables
     let score = 0;
     let messages: string[] = [];
 
-    // Check length
     if (password.length >= 8) score++;
     if (password.length >= 12) score++;
-
-    // Check for uppercase letters
     if (/[A-Z]/.test(password)) score++;
     else messages.push("at least one uppercase letter");
-
-    // Check for lowercase letters
     if (/[a-z]/.test(password)) score++;
     else messages.push("at least one lowercase letter");
-
-    // Check for numbers
     if (/\d/.test(password)) score++;
     else messages.push("at least one number");
-
-    // Check for special characters
     if (/[^A-Za-z0-9]/.test(password)) score++;
     else messages.push("at least one special character");
 
-    // Determine strength message
     let message = "";
     if (score >= 5) message = "Strong password";
     else if (score >= 3) message = "Medium password";
@@ -128,17 +119,14 @@ const Register = () => {
       );
 
       if (!response.ok) {
-        throw new Error(
-          "Invalid TIN number or station not registered with ministry"
-        );
+        const data: ApiErrorResponse = await response.json();
+        throw new Error(data.error || "Invalid TIN number or station not registered with ministry");
       }
 
       const data: StationValidationResponse = await response.json();
-
       const filledFields: Record<string, boolean> = {};
       const updatedFormData = { ...formData };
 
-      // Auto-fill first_name and last_name from backend response
       if (data.first_name) {
         updatedFormData.firstName = data.first_name;
         filledFields.firstName = true;
@@ -154,8 +142,7 @@ const Register = () => {
 
       toast({
         title: "TIN Validated",
-        description:
-          "Station information retrieved. Please complete the registration form.",
+        description: "Station information retrieved. Please complete the registration form.",
       });
     } catch (error: any) {
       toast({
@@ -170,19 +157,17 @@ const Register = () => {
 
   const isFieldDisabled = (fieldName: string) => {
     if (userType !== "stations") return false;
-    if (!tinValidated) return true; // Disable all fields until TIN validated
-    return autoFilledFields[fieldName]; // Disable only auto-filled fields
+    if (!tinValidated) return true;
+    return autoFilledFields[fieldName];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Password strength validation
     if (passwordStrength.score < 3) {
       toast({
         title: "Weak Password",
-        description:
-          "Please choose a stronger password. " + passwordStrength.message,
+        description: "Please choose a stronger password. " + passwordStrength.message,
         variant: "destructive",
       });
       return;
@@ -200,7 +185,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      let response, data;
+      let response, data: any;
       let userId: string;
 
       if (userType === "drivers") {
@@ -224,16 +209,10 @@ const Register = () => {
         data = await response.json();
 
         if (!response.ok) {
-          if (response.status === 409) {
-            throw new Error("Username or email already exists");
-          }
-          throw new Error(data.message || "Driver registration failed");
+          throw new Error(data.error);
         }
 
         userId = data.data.id;
-        if (!userId) {
-          throw new Error("User ID not found in driver response");
-        }
       } else {
         if (!tinValidated) {
           throw new Error("Please validate your TIN number first");
@@ -267,16 +246,10 @@ const Register = () => {
         data = await response.json();
 
         if (!response.ok) {
-          if (response.status === 409) {
-            throw new Error("Username or email already exists");
-          }
-          throw new Error(data.message || "Station registration failed");
+          throw new Error(data.error);
         }
 
         userId = data.data?.user?.id;
-        if (!userId) {
-          throw new Error("User ID not found in station response");
-        }
       }
 
       localStorage.setItem("tempUserEmail", formData.email);
@@ -328,7 +301,6 @@ const Register = () => {
     setPasswordStrength({ score: 0, message: "" });
   };
 
-  // Password strength color indicator
   const getPasswordStrengthColor = () => {
     if (passwordStrength.score >= 5) return "bg-green-500";
     if (passwordStrength.score >= 3) return "bg-yellow-500";
@@ -439,7 +411,6 @@ const Register = () => {
           <form onSubmit={handleSubmit}>
             {userType === "drivers" ? (
               <>
-                {/* Driver form remains exactly the same */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -503,8 +474,6 @@ const Register = () => {
               </>
             ) : (
               <>
-                {/* Modified gas station form with TIN validation */}
-                {/* TIN Number Field - Always first and editable */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     TIN Number (10 digits)*
@@ -535,7 +504,6 @@ const Register = () => {
                   </div>
                 </div>
 
-                {/* Personal Info Fields - Will be auto-filled from backend */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -577,7 +545,6 @@ const Register = () => {
                   </div>
                 </div>
 
-                {/* Other fields that user needs to fill */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Username*
@@ -694,7 +661,6 @@ const Register = () => {
               </>
             )}
 
-            {/* Password fields - Only enabled after TIN validation for stations */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password*

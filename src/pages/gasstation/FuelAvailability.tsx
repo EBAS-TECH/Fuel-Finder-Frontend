@@ -161,7 +161,9 @@ const FuelAvailability = () => {
       const fuelsWithHours = latestRecords.map((fuel: FuelAvailability) => ({
         ...fuel,
         available_hrs: fuel.availability_duration
-          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(2)
+          ? (parseFloat(fuel.availability_duration) / (1000 * 60 * 60)).toFixed(
+              2
+            )
           : "0.00",
       }));
 
@@ -378,10 +380,8 @@ const FuelAvailability = () => {
         ),
         available: true, // Assuming the fuel was available during the period
         availability_duration: item.total_milliseconds,
-        available_hrs: (
-          parseFloat(item.total_milliseconds) /
-          (1000 * 60 * 60) // Convert milliseconds to hours
-        ).toFixed(2),
+        available_hrs: (parseFloat(item.total_milliseconds) / (100 * 60 * 60)) // Convert milliseconds to hours
+          .toFixed(2),
       }));
 
       let filteredData = processedData;
