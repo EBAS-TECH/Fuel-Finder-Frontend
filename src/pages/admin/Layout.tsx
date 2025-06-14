@@ -9,8 +9,9 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  UserCog,
   Fuel,
+  Menu,
+  X,
 } from "lucide-react";
 import axios from "axios";
 import logoImage from "@/assets/logo.png";
@@ -32,7 +33,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || API_BASE_URL.replace('https', 'wss');
 
@@ -60,17 +60,20 @@ const SidebarItem = ({
   label,
   to,
   active,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   to: string;
   active?: boolean;
+  onClick?: () => void;
 }) => {
   return (
     <Link
       to={to}
+      onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
+        "flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm md:text-base",
         active
           ? "bg-green-500 text-white"
           : "text-gray-600 hover:bg-green-100 hover:text-green-700"
@@ -123,6 +126,20 @@ export default function AdminLayout() {
   const [monthlyStats, setMonthlyStats] = useState<MonthlyUserStats[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -348,31 +365,37 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-green-50 flex flex-col">
       <header className="bg-white shadow-sm rounded-b-2xl z-10">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <button 
+              className="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
             <Link to="/admin/dashboard" className="flex items-center">
               <img
                 src={logoImage}
                 alt="Fuel Finder Logo"
-                className="w-16 ml-12 h-auto"
+                className="w-12 md:w-16 h-auto"
               />
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <div className="relative">
               <DropdownMenu onOpenChange={setProfileDropdownOpen}>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 hover:bg-green-100 px-3 py-1 rounded-full transition-all">
-                    <div className="text-right">
-                      <h4 className="text-green-600 font-medium">
+                  <button className="flex items-center gap-1 md:gap-2 hover:bg-green-100 px-2 py-1 md:px-3 md:py-1 rounded-full transition-all">
+                    <div className="text-right hidden sm:block">
+                      <h4 className="text-green-600 font-medium text-sm md:text-base">
                         {user.first_name} {user.last_name}
                       </h4>
                       <p className="text-xs text-gray-500 capitalize">
                         {user.role}
                       </p>
                     </div>
-                    <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-green-100">
+                    <div className="h-8 w-8 md:h-10 md:w-10 rounded-full overflow-hidden border-2 border-green-100">
                       <img
                         src={user.profile_pic}
                         alt="User Avatar"
@@ -380,9 +403,9 @@ export default function AdminLayout() {
                       />
                     </div>
                     {profileDropdownOpen ? (
-                      <ChevronUp className="h-4 w-4 text-green-600" />
+                      <ChevronUp className="h-4 w-4 text-green-600 hidden md:block" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-green-600" />
+                      <ChevronDown className="h-4 w-4 text-green-600 hidden md:block" />
                     )}
                   </button>
                 </DropdownMenuTrigger>
@@ -414,32 +437,48 @@ export default function AdminLayout() {
       </header>
 
       <div className="flex flex-1">
-        <aside className="w-64 bg-white shadow-sm rounded-r-2xl mt-2 ml-2 h-[calc(100vh-5rem)] sticky top-4">
-          <div className="p-4 h-full flex flex-col">
+        {/* Mobile Menu Overlay */}
+        {mobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+        <aside className={cn(
+          "w-64 bg-white shadow-sm rounded-r-2xl mt-2 ml-2 h-[calc(100vh-5rem)] sticky top-4 z-30 transition-transform duration-300",
+          "fixed md:relative md:translate-x-0",
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}>
+          <div className="p-4 h-full flex flex-col overflow-y-auto">
             <div className="space-y-2 mt-4">
               <SidebarItem
                 icon={<LayoutDashboard className="h-5 w-5" />}
                 label="Dashboard"
                 to="/admin/dashboard"
                 active={pathName.includes("/admin/dashboard")}
+                onClick={() => setMobileMenuOpen(false)}
               />
               <SidebarItem
                 icon={<User className="h-5 w-5" />}
                 label="Drivers"
                 to="/admin/drivers"
                 active={pathName.includes("/admin/drivers")}
+                onClick={() => setMobileMenuOpen(false)}
               />
               <SidebarItem
                 icon={<Fuel className="h-5 w-5" />}
                 label="Stations"
                 to="/admin/stations"
                 active={pathName.includes("/admin/stations")}
+                onClick={() => setMobileMenuOpen(false)}
               />
               <SidebarItem
                 icon={<Users className="h-5 w-5" />}
                 label="Delegate"
                 to="/admin/delegates"
                 active={pathName.includes("/admin/delegates")}
+                onClick={() => setMobileMenuOpen(false)}
               />
               <SidebarItem
                 icon={
@@ -477,46 +516,51 @@ export default function AdminLayout() {
                 label="Fuel Price"
                 to="/admin/fuel-price"
                 active={pathName.includes("/admin/fuel-price")}
+                onClick={() => setMobileMenuOpen(false)}
               />
               <SidebarItem
                 icon={<UserRound className="h-5 w-5" />}
                 label="Profile"
                 to="/admin/profile"
                 active={pathName.includes("/admin/profile")}
+                onClick={() => setMobileMenuOpen(false)}
               />
             </div>
           </div>
         </aside>
 
-        <main className="flex-1 p-6 ml-4 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm">
+        <main className={cn(
+          "flex-1 p-4 md:p-6 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm transition-all duration-300",
+          mobileMenuOpen ? "ml-0" : "md:ml-4"
+        )}>
           {pathName.includes("/admin/dashboard") ? (
             <div>
-              <h2 className="text-2xl font-bold mb-6">User Statistics</h2>
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">User Statistics</h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                <div className="bg-green-50 p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
-                  <h3 className="text-gray-500 text-sm font-medium">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
+                <div className="bg-green-50 p-2 md:p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
+                  <h3 className="text-gray-500 text-xs md:text-sm font-medium">
                     Total Users
                   </h3>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xl md:text-2xl font-bold text-green-600">
                     <Counter value={users.length} />
                   </p>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
-                  <h3 className="text-gray-500 text-sm font-medium">
+                <div className="bg-blue-50 p-2 md:p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
+                  <h3 className="text-gray-500 text-xs md:text-sm font-medium">
                     Total Drivers
                   </h3>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-xl md:text-2xl font-bold text-blue-600">
                     <Counter
                       value={users.filter((u) => u.role === "DRIVER").length}
                     />
                   </p>
                 </div>
-                <div className="bg-purple-50 p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
-                  <h3 className="text-gray-500 text-sm font-medium">
+                <div className="bg-purple-50 p-2 md:p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
+                  <h3 className="text-gray-500 text-xs md:text-sm font-medium">
                     Total Gas Stations
                   </h3>
-                  <p className="text-2xl font-bold text-purple-600">
+                  <p className="text-xl md:text-2xl font-bold text-purple-600">
                     <Counter
                       value={
                         users.filter((u) => u.role === "GAS_STATION").length
@@ -524,11 +568,11 @@ export default function AdminLayout() {
                     />
                   </p>
                 </div>
-                <div className="bg-amber-50 p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
-                  <h3 className="text-gray-500 text-sm font-medium">
+                <div className="bg-amber-50 p-2 md:p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
+                  <h3 className="text-gray-500 text-xs md:text-sm font-medium">
                     Total Delegates
                   </h3>
-                  <p className="text-2xl font-bold text-amber-600">
+                  <p className="text-xl md:text-2xl font-bold text-amber-600">
                     <Counter
                       value={
                         users.filter((u) => u.role === "MINISTRY_DELEGATE")
@@ -537,11 +581,11 @@ export default function AdminLayout() {
                     />
                   </p>
                 </div>
-                <div className="bg-red-50 p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
-                  <h3 className="text-gray-500 text-sm font-medium">
+                <div className="bg-red-50 p-2 md:p-3 rounded-lg shadow hover:shadow-md transition-all duration-300">
+                  <h3 className="text-gray-500 text-xs md:text-sm font-medium">
                     Total Admins
                   </h3>
-                  <p className="text-2xl font-bold text-red-600">
+                  <p className="text-xl md:text-2xl font-bold text-red-600">
                     <Counter
                       value={users.filter((u) => u.role === "ADMIN").length}
                     />
@@ -549,15 +593,15 @@ export default function AdminLayout() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg shadow mb-8">
-                <h3 className="text-lg font-semibold mb-4">
+              <div className="bg-white p-4 md:p-6 rounded-lg shadow mb-6 md:mb-8">
+                <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">
                   Monthly User Registration (Last 6 Months)
                 </h3>
-                <div className="h-80">
+                <div className="h-60 md:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={monthlyStats}
-                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" />
@@ -570,7 +614,7 @@ export default function AdminLayout() {
                         name="Drivers"
                         stroke="#3B82F6"
                         strokeWidth={2}
-                        activeDot={{ r: 8 }}
+                        activeDot={{ r: 6 }}
                       />
                       <Line
                         type="monotone"
@@ -584,25 +628,25 @@ export default function AdminLayout() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h3 className="text-lg font-semibold mb-4">Recent Users</h3>
+              <div className="bg-white p-4 md:p-6 rounded-lg shadow">
+                <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Recent Users</h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Name
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Email
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Role
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Joined
                         </th>
                       </tr>
@@ -621,34 +665,34 @@ export default function AdminLayout() {
                             className="opacity-0 animate-fade-in"
                             style={{ animationDelay: `${index * 100}ms` }}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
+                                <div className="flex-shrink-0 h-8 w-8 md:h-10 md:w-10">
                                   <img
-                                    className="h-10 w-10 rounded-full"
+                                    className="h-8 w-8 md:h-10 md:w-10 rounded-full"
                                     src={user.profile_pic}
                                     alt=""
                                   />
                                 </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">
+                                <div className="ml-2 md:ml-4">
+                                  <div className="text-sm font-medium text-gray-900 truncate max-w-[100px] md:max-w-none">
                                     {user.first_name} {user.last_name}
                                   </div>
-                                  <div className="text-sm text-gray-500">
+                                  <div className="text-xs md:text-sm text-gray-500 truncate max-w-[100px] md:max-w-none">
                                     {user.username}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500 truncate max-w-[100px] md:max-w-none">
                               {user.email}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap">
                               <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 capitalize">
                                 {user.role.toLowerCase().replace(/_/g, " ")}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap">
                               <span
                                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                   user.verified
@@ -659,7 +703,7 @@ export default function AdminLayout() {
                                 {user.verified ? "Verified" : "Pending"}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-3 py-2 md:px-6 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-500">
                               {new Date(user.created_at).toLocaleDateString()}
                             </td>
                           </tr>
