@@ -216,7 +216,7 @@ export default function StationDetailPage() {
       .map((_, index) => (
         <Star
           key={index}
-          className={`h-6 w-6 ${
+          className={`h-4 w-4 md:h-5 md:w-5 ${
             index < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
           }`}
         />
@@ -293,8 +293,9 @@ export default function StationDetailPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center mb-5">
+    <div className="p-4 md:p-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center mb-5 gap-2">
         <div className="flex items-center text-green-500">
           <svg
             className="h-6 w-6 mr-2"
@@ -326,10 +327,11 @@ export default function StationDetailPage() {
           </svg>
           <h1 className="text-xl font-medium">Stations</h1>
         </div>
-        <p className="text-gray-400 text-sm ml-2">Stations management</p>
+        <p className="text-gray-400 text-sm md:ml-2">Stations management</p>
       </div>
 
-      <div className="bg-[#F1F7F7] p-6 rounded-lg">
+      <div className="bg-[#F1F7F7] p-4 md:p-6 rounded-lg">
+        {/* Back Link */}
         <Link
           to="/ministry-delegate/stations"
           className="flex items-center text-green-500 mb-5 hover:underline"
@@ -338,14 +340,16 @@ export default function StationDetailPage() {
           <span>Station's Detail</span>
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Main Content Grid - Responsive Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
+          {/* Station Info Card - Left Column */}
           <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-lg shadow-sm flex flex-col items-center">
-              <div className="w-24 h-24 rounded-full overflow-hidden p-2 border flex items-center justify-center mb-3">
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm flex flex-col items-center">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden p-2 border flex items-center justify-center mb-3">
                 <img
                   src={stationData.logo || "/default-logo.png"}
                   alt={stationData.en_name}
-                  className="w-20 h-20 object-contain"
+                  className="w-full h-full object-contain"
                 />
               </div>
 
@@ -356,66 +360,66 @@ export default function StationDetailPage() {
                 {stationData.am_name}
               </p>
 
-              <div className="flex items-center mb-5">
-                {renderStars(Math.floor(calculateAverageRating()))}
-                <span className="ml-2">
-                  {calculateAverageRating().toFixed(1)} ({originalFeedbackData.length} reviews)
-                </span>
+              <div className="flex flex-col items-center mb-5 w-full">
+                <div className="flex items-center mb-1">
+                  {renderStars(Math.floor(calculateAverageRating()))}
+                  <span className="ml-2 text-sm md:text-base">
+                    {calculateAverageRating().toFixed(1)} ({originalFeedbackData.length} reviews)
+                  </span>
+                </div>
+                <Button
+                  onClick={() => setIsAiSummaryOpen(true)}
+                  className="w-full mt-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm"
+                >
+                  AI Summary
+                </Button>
               </div>
 
-              <div className="w-full space-y-4">
+              <div className="w-full space-y-3 md:space-y-4">
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-green-500 h-5 w-5 mt-0.5" />
+                  <MapPin className="text-green-500 h-4 w-4 md:h-5 md:w-5 mt-0.5" />
                   <div>
-                    <p className="text-sm text-gray-500">TIN Number</p>
-                    <p className="text-sm">{stationData.tin_number || "N/A"}</p>
+                    <p className="text-xs md:text-sm text-gray-500">TIN Number</p>
+                    <p className="text-xs md:text-sm">{stationData.tin_number || "N/A"}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-green-500 h-5 w-5 mt-0.5" />
+                  <MapPin className="text-green-500 h-4 w-4 md:h-5 md:w-5 mt-0.5" />
                   <div>
-                    <p className="text-sm text-gray-500">Latitude</p>
-                    <p className="text-sm">
+                    <p className="text-xs md:text-sm text-gray-500">Latitude</p>
+                    <p className="text-xs md:text-sm">
                       {stationData.latitude?.toFixed(6) || "N/A"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-green-500 h-5 w-5 mt-0.5" />
+                  <MapPin className="text-green-500 h-4 w-4 md:h-5 md:w-5 mt-0.5" />
                   <div>
-                    <p className="text-sm text-gray-500">Longitude</p>
-                    <p className="text-sm">
+                    <p className="text-xs md:text-sm text-gray-500">Longitude</p>
+                    <p className="text-xs md:text-sm">
                       {stationData.longitude?.toFixed(6) || "N/A"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <MapPin className="text-green-500 h-5 w-5 mt-0.5" />
+                  <MapPin className="text-green-500 h-4 w-4 md:h-5 md:w-5 mt-0.5" />
                   <div>
-                    <p className="text-sm text-gray-500">Address</p>
-                    <p className="text-sm">{stationData.address || "N/A"}</p>
+                    <p className="text-xs md:text-sm text-gray-500">Address</p>
+                    <p className="text-xs md:text-sm">{stationData.address || "N/A"}</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Feedbacks Section - Right Column */}
           <div className="lg:col-span-2">
-            <div className="bg-white p-6 rounded-lg shadow-sm h-full relative">
-              <div className="flex justify-between mb-4">
-                <Button
-                  onClick={() => setIsAiSummaryOpen(true)}
-                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm"
-                >
-                  AI Summary for station
-                </Button>
-              </div>
-
-              <div className="flex justify-between items-center mb-5">
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm h-full">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
                 <h3 className="text-lg font-medium">Feedbacks</h3>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Select value={filter} onValueChange={setFilter}>
-                    <SelectTrigger className="w-36 border border-gray-200 text-sm">
+                    <SelectTrigger className="w-full md:w-36 border border-gray-200 text-sm">
                       <div className="flex items-center gap-2">
                         <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
                         <SelectValue placeholder="Filter by Rating" />
@@ -471,7 +475,7 @@ export default function StationDetailPage() {
 
                   <Popover>
                     <PopoverTrigger asChild ref={feedbackDatePopoverTriggerRef}>
-                      <Button variant="outline" className="w-36 border border-gray-200 text-sm">
+                      <Button variant="outline" className="w-full md:w-36 border border-gray-200 text-sm">
                         <CalendarDays className="h-4 w-4 mr-2" />
                         {feedbackDate ? format(feedbackDate, "MMM dd") : "Filter by Date"}
                       </Button>
@@ -504,10 +508,10 @@ export default function StationDetailPage() {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {feedbackData.slice(0, 3).map((feedback) => (
-                  <div key={feedback.id} className="border-l-4 border-green-500 pl-4 mb-4">
-                    <div className="flex justify-between items-start mb-2">
+                  <div key={feedback.id} className="border-l-4 border-green-500 pl-3 md:pl-4 mb-3 md:mb-4">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full overflow-hidden">
                           <img
@@ -520,7 +524,7 @@ export default function StationDetailPage() {
                           />
                         </div>
                         <div>
-                          <h4 className="font-medium text-green-700">
+                          <h4 className="font-medium text-green-700 text-sm md:text-base">
                             {feedback.user?.first_name || 'Unknown'} {feedback.user?.last_name || 'User'}
                           </h4>
                           <p className="text-xs text-gray-400">
@@ -532,14 +536,16 @@ export default function StationDetailPage() {
                         {renderStars(feedback.rating)}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500">{feedback.comment || "No comment"}</p>
+                    <p className="text-xs md:text-sm text-gray-500">{feedback.comment || "No comment"}</p>
                   </div>
                 ))}
               </div>
 
               {feedbackData.length > 3 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div></div>
+                <div className="flex flex-col md:flex-row items-center justify-between mt-4 gap-3">
+                  <div className="text-xs md:text-sm text-gray-500">
+                    Showing {Math.min((currentPage - 1) * 3 + 1, feedbackData.length)} - {Math.min(currentPage * 3, feedbackData.length)} of {feedbackData.length}
+                  </div>
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
@@ -589,101 +595,108 @@ export default function StationDetailPage() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-medium mb-4">Fuel Availability Report</h3>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Select value={fuelType} onValueChange={setFuelType}>
-              <SelectTrigger className="w-32 border border-gray-200">
-                <SelectValue placeholder="Fuel Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="petrol">Petrol</SelectItem>
-                <SelectItem value="diesel">Diesel</SelectItem>
-              </SelectContent>
-            </Select>
-            <Popover>
-              <PopoverTrigger asChild ref={startDatePopoverTriggerRef}>
-                <Button variant="outline" className="w-32 border border-gray-200">
-                  {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={startDate}
-                  onSelect={(date) => {
-                    setStartDate(date || undefined);
-                    if (startDatePopoverTriggerRef.current) {
-                      startDatePopoverTriggerRef.current.click();
-                    }
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild ref={endDatePopoverTriggerRef}>
-                <Button variant="outline" className="w-32 border border-gray-200">
-                  {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={endDate}
-                  onSelect={(date) => {
-                    setEndDate(date || undefined);
-                    if (endDatePopoverTriggerRef.current) {
-                      endDatePopoverTriggerRef.current.click();
-                    }
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+        {/* Fuel Availability Section */}
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
+            <h3 className="text-lg font-medium">Fuel Availability Report</h3>
+            <div className="flex flex-wrap gap-2">
+              <Select value={fuelType} onValueChange={setFuelType}>
+                <SelectTrigger className="w-full md:w-32 border border-gray-200">
+                  <SelectValue placeholder="Fuel Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="petrol">Petrol</SelectItem>
+                  <SelectItem value="diesel">Diesel</SelectItem>
+                </SelectContent>
+              </Select>
+              <Popover>
+                <PopoverTrigger asChild ref={startDatePopoverTriggerRef}>
+                  <Button variant="outline" className="w-full md:w-32 border border-gray-200">
+                    {startDate ? format(startDate, "MMM dd") : "Start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => {
+                      setStartDate(date || undefined);
+                      if (startDatePopoverTriggerRef.current) {
+                        startDatePopoverTriggerRef.current.click();
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              <Popover>
+                <PopoverTrigger asChild ref={endDatePopoverTriggerRef}>
+                  <Button variant="outline" className="w-full md:w-32 border border-gray-200">
+                    {endDate ? format(endDate, "MMM dd") : "End date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={(date) => {
+                      setEndDate(date || undefined);
+                      if (endDatePopoverTriggerRef.current) {
+                        endDatePopoverTriggerRef.current.click();
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
-          <Table className="w-full border border-gray-100">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="bg-green-500 text-white font-normal w-16">ID</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Fuel Name</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Start Date</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">End Date</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal text-center">Available hrs</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fuelAvailabilityData.slice((currentPage - 1) * 5, currentPage * 5).map((item, index) => (
-                <TableRow key={item.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.fuel_type}</TableCell>
-                  <TableCell>{new Date(item.up_time).toLocaleDateString()}</TableCell>
-                  <TableCell>{item.down_time ? new Date(item.down_time).toLocaleDateString() : "Still available"}</TableCell>
-                  <TableCell className="text-center">
-                    {Math.floor(parseFloat(item.availability_duration) / 3600).toFixed(1)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      item.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}>
-                      {item.available ? "Available" : "Unavailable"}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {fuelAvailabilityData.length === 0 && (
+          
+          <div className="overflow-x-auto">
+            <Table className="w-full border border-gray-100">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4 text-gray-500">
-                    No data available
-                  </TableCell>
+                  <TableHead className="bg-green-500 text-white font-normal w-16">ID</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal">Fuel</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal hidden md:table-cell">Start Date</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal hidden md:table-cell">End Date</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal text-center">Hrs</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal text-center">Status</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-500">
+              </TableHeader>
+              <TableBody>
+                {fuelAvailabilityData.slice((currentPage - 1) * 5, currentPage * 5).map((item, index) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{item.fuel_type}</TableCell>
+                    <TableCell className="hidden md:table-cell">{new Date(item.up_time).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden md:table-cell">{item.down_time ? new Date(item.down_time).toLocaleDateString() : "Still available"}</TableCell>
+                    <TableCell className="text-center">
+                      {Math.floor(parseFloat(item.availability_duration) / 3600).toFixed(1)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        item.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}>
+                        {item.available ? "Available" : "Unavailable"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {fuelAvailabilityData.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-4 text-gray-500">
+                      No data available
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="flex flex-col md:flex-row items-center justify-between mt-4 gap-3">
+            <div className="text-xs md:text-sm text-gray-500">
               Showing {Math.min((currentPage - 1) * 5 + 1, fuelAvailabilityData.length)} - {Math.min(currentPage * 5, fuelAvailabilityData.length)} of {fuelAvailabilityData.length}
             </div>
             <Pagination>
@@ -752,6 +765,7 @@ export default function StationDetailPage() {
         </div>
       </div>
 
+      {/* AI Summary Dialog */}
       <Dialog open={isAiSummaryOpen} onOpenChange={setIsAiSummaryOpen}>
         <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-white">
           <div className="p-6 relative">
