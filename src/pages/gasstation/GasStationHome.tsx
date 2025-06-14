@@ -4,16 +4,12 @@ import {
   Star,
   Fuel,
   MessageSquare,
-  Zap,
-  AlertCircle,
-  TrendingUp,
-  Clock,
-  Gauge,
-  X,
-  Droplet,
   Activity,
   Users,
   RefreshCw,
+  AlertCircle,
+  TrendingUp,
+  Clock,
 } from "lucide-react";
 import {
   Card,
@@ -46,23 +42,23 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Green color palette
+// Color palette
 const COLORS = {
-  primary: "#10B981", // emerald-500
-  light: "#D1FAE5", // emerald-100
-  dark: "#065F46", // emerald-800
-  accent: "#059669", // emerald-600
-  secondary: "#ECFDF5", // emerald-50
-  danger: "#EF4444", // red-500
-  warning: "#F59E0B", // amber-500
+  primary: "#10B981",
+  light: "#D1FAE5",
+  dark: "#065F46",
+  accent: "#059669",
+  secondary: "#ECFDF5",
+  danger: "#EF4444",
+  warning: "#F59E0B",
 };
 
-// Define fuel types and their colors
+// Fuel type colors
 const fuelTypeColors = {
-  PETROL: "#10B981", // emerald-500
-  DIESEL: "#059669", // emerald-600
-  PREMIUM: "#047857", // emerald-700
-  REGULAR: "#34D399", // emerald-400
+  PETROL: "#10B981",
+  DIESEL: "#059669",
+  PREMIUM: "#047857",
+  REGULAR: "#34D399",
 };
 
 export default function DashboardPage() {
@@ -93,7 +89,7 @@ export default function DashboardPage() {
       try {
         setLoading(true);
 
-        // First, fetch the station ID for this user
+        // Fetch station ID
         const stationResponse = await fetch(
           `${API_BASE_URL}/api/station/user/${userId}`,
           {
@@ -109,7 +105,7 @@ export default function DashboardPage() {
         setStationId(stationData.data.id);
         setStationDetails(stationData.data);
 
-        // Fetch feedback data for this station
+        // Fetch feedback data
         const feedbackResponse = await fetch(
           `${API_BASE_URL}/api/feedback/station/${stationData.data.id}`,
           {
@@ -119,7 +115,6 @@ export default function DashboardPage() {
         const feedbackData = await feedbackResponse.json();
 
         if (feedbackData.success && feedbackData.data) {
-          // Calculate average rating and total feedback
           const totalRatings = feedbackData.data.length;
           const sumRatings = feedbackData.data.reduce(
             (sum, feedback) => sum + feedback.rating,
@@ -133,14 +128,8 @@ export default function DashboardPage() {
             total: totalRatings,
           });
 
-          // Process rating distribution data
-          const ratingCounts = {
-            5: 0,
-            4: 0,
-            3: 0,
-            2: 0,
-            1: 0,
-          };
+          // Process rating distribution
+          const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
 
           feedbackData.data.forEach((feedback) => {
             const rating = Math.floor(feedback.rating);
@@ -149,70 +138,61 @@ export default function DashboardPage() {
             }
           });
 
-          const ratingDistributionData = [
+          setRatingDistribution([
             {
               name: "Very Positive",
               value: ratingCounts[5],
-              percentage:
-                totalRatings > 0 ? (ratingCounts[5] / totalRatings) * 100 : 0,
+              percentage: totalRatings > 0 ? (ratingCounts[5] / totalRatings) * 100 : 0,
               color: "#10B981",
               stars: 5,
             },
             {
               name: "Positive",
               value: ratingCounts[4],
-              percentage:
-                totalRatings > 0 ? (ratingCounts[4] / totalRatings) * 100 : 0,
+              percentage: totalRatings > 0 ? (ratingCounts[4] / totalRatings) * 100 : 0,
               color: "#34D399",
               stars: 4,
             },
             {
               name: "Neutral",
               value: ratingCounts[3],
-              percentage:
-                totalRatings > 0 ? (ratingCounts[3] / totalRatings) * 100 : 0,
+              percentage: totalRatings > 0 ? (ratingCounts[3] / totalRatings) * 100 : 0,
               color: "#F59E0B",
               stars: 3,
             },
             {
               name: "Negative",
               value: ratingCounts[2],
-              percentage:
-                totalRatings > 0 ? (ratingCounts[2] / totalRatings) * 100 : 0,
+              percentage: totalRatings > 0 ? (ratingCounts[2] / totalRatings) * 100 : 0,
               color: "#F97316",
               stars: 2,
             },
             {
               name: "Very Negative",
               value: ratingCounts[1],
-              percentage:
-                totalRatings > 0 ? (ratingCounts[1] / totalRatings) * 100 : 0,
+              percentage: totalRatings > 0 ? (ratingCounts[1] / totalRatings) * 100 : 0,
               color: "#EF4444",
               stars: 1,
             },
-          ];
-
-          setRatingDistribution(ratingDistributionData);
+          ]);
         }
 
-        // Fetch fuel availability data
+        // Fetch fuel availability
         const availabilityResponse = await fetch(
           `${API_BASE_URL}/api/availability/station/${stationData.data.id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-
         const availabilityData = await availabilityResponse.json();
 
-        // Process availability data - only include available fuels
         const processedAvailability = availabilityData.data
-          .filter((item) => item.available) // Only include available fuels
+          .filter((item) => item.available)
           .map((item) => ({
             fuel_type: item.fuel_type,
             availability_duration: Math.floor(
               parseFloat(item.availability_duration) / 3600
-            ), // Convert seconds to hours
+            ),
             available: item.available,
             color: fuelTypeColors[item.fuel_type] || COLORS.primary,
           }));
@@ -237,10 +217,6 @@ export default function DashboardPage() {
         localStorage.getItem("authToken") ||
         sessionStorage.getItem("authToken");
 
-      // Format dates for the API request
-      const startDate = new Date(stationDetails.created_at).toISOString();
-      const endDate = new Date().toISOString();
-
       const response = await fetch(
         "https://fuel-finder-backend.onrender.com/api/station/report/ministry",
         {
@@ -250,8 +226,8 @@ export default function DashboardPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            start_date: startDate,
-            end_date: endDate,
+            start_date: new Date(stationDetails.created_at).toISOString(),
+            end_date: new Date().toISOString(),
           }),
         }
       );
@@ -259,7 +235,6 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (data.data && Array.isArray(data.data)) {
-        // Find our station in the report
         const stationReport = data.data.find(
           (station) => station.stationId === stationId
         );
@@ -276,7 +251,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Prepare data for bar chart - only available fuels
   const barChartData = fuelAvailability.map((item) => ({
     name: item.fuel_type,
     hours: item.availability_duration,
@@ -285,35 +259,25 @@ export default function DashboardPage() {
 
   const getCategoryColor = (category) => {
     switch (category?.toLowerCase()) {
-      case "low":
-        return "bg-red-500 text-white";
-      case "medium":
-        return "bg-amber-500 text-white";
-      case "high":
-        return "bg-emerald-500 text-white";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "low": return "bg-red-500 text-white";
+      case "medium": return "bg-amber-500 text-white";
+      case "high": return "bg-emerald-500 text-white";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const refreshData = () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    setTimeout(() => setLoading(false), 1000);
   };
 
-  // Custom tooltip for the rating chart
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
         <div className="bg-white p-4 rounded-lg shadow-lg border border-emerald-200">
           <div className="flex items-center gap-2 mb-1">
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: data.color }}
-            />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.color }} />
             <p className="font-semibold text-emerald-900">{data.name}</p>
           </div>
           <p className="text-sm text-emerald-700">
@@ -334,15 +298,15 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-6 bg-emerald-50 min-h-screen">
+    <div className="p-4 md:p-6 bg-emerald-50 min-h-screen">
       {/* Header Section */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <div className="flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="32"
-              height="32"
+              width="28"
+              height="28"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#176016"
@@ -356,33 +320,32 @@ export default function DashboardPage() {
               <path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18" />
               <path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" />
             </svg>
-            <h1 className="text-3xl font-bold text-emerald-900">
+            <h1 className="text-2xl md:text-3xl font-bold text-emerald-900">
               Station Dashboard
             </h1>
           </div>
-
-          <p className="text-emerald-700">
+          <p className="text-sm md:text-base text-emerald-700">
             Welcome to your fuel station management hub
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
           <Button
             variant="outline"
-            className="text-emerald-600 border-emerald-300 hover:bg-emerald-100"
+            size="sm"
+            className="text-emerald-600 border-emerald-300 hover:bg-emerald-100 w-full md:w-auto"
             onClick={refreshData}
           >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
           <Button
             onClick={fetchAISuggestion}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg shadow-md"
+            size="sm"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-3 md:px-4 py-1 md:py-2 rounded-lg shadow-md w-full md:w-auto"
             disabled={aiLoading}
           >
-            <Activity className="h-5 w-5 text-white" />
-            <span className="font-medium text-white">
+            <Activity className="h-4 md:h-5 w-4 md:w-5 text-white" />
+            <span className="font-medium text-white text-sm md:text-base">
               {aiLoading ? "Analyzing..." : "AI Insights"}
             </span>
           </Button>
@@ -396,36 +359,36 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             {/* Rating Card */}
             <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-4 border-emerald-400">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm font-medium text-emerald-800">
+                  <CardTitle className="text-xs md:text-sm font-medium text-emerald-800">
                     Customer Rating
                   </CardTitle>
-                  <div className="p-2 rounded-lg bg-emerald-200">
-                    <Star className="h-5 w-5 text-emerald-600" />
+                  <div className="p-1 md:p-2 rounded-lg bg-emerald-200">
+                    <Star className="h-4 md:h-5 w-4 md:w-5 text-emerald-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-emerald-900 mb-2">
+                <div className="text-3xl md:text-4xl font-bold text-emerald-900 mb-1 md:mb-2">
                   {feedbackData?.average_rate || "0"}
-                  <span className="text-lg text-emerald-600">/5</span>
+                  <span className="text-sm md:text-lg text-emerald-600">/5</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {feedbackData?.average_rate > 3 ? (
                     <>
-                      <TrendingUp className="h-4 w-4 text-emerald-500" />
-                      <span className="text-sm text-emerald-700">
+                      <TrendingUp className="h-3 md:h-4 w-3 md:w-4 text-emerald-500" />
+                      <span className="text-xs md:text-sm text-emerald-700">
                         Excellent performance
                       </span>
                     </>
                   ) : (
                     <>
-                      <AlertCircle className="h-4 w-4 text-amber-500" />
-                      <span className="text-sm text-amber-700">
+                      <AlertCircle className="h-3 md:h-4 w-3 md:w-4 text-amber-500" />
+                      <span className="text-xs md:text-sm text-amber-700">
                         Needs improvement
                       </span>
                     </>
@@ -433,7 +396,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
               <CardFooter className="pt-0">
-                <CardDescription className="text-emerald-700">
+                <CardDescription className="text-xs md:text-sm text-emerald-700">
                   Based on {feedbackData?.total || 0} customer reviews
                 </CardDescription>
               </CardFooter>
@@ -443,16 +406,16 @@ export default function DashboardPage() {
             <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-4 border-emerald-400">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm font-medium text-emerald-800">
+                  <CardTitle className="text-xs md:text-sm font-medium text-emerald-800">
                     Customer Engagement
                   </CardTitle>
-                  <div className="p-2 rounded-lg bg-emerald-200">
-                    <Users className="h-5 w-5 text-emerald-600" />
+                  <div className="p-1 md:p-2 rounded-lg bg-emerald-200">
+                    <Users className="h-4 md:h-5 w-4 md:w-5 text-emerald-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-emerald-900 mb-2">
+                <div className="text-3xl md:text-4xl font-bold text-emerald-900 mb-1 md:mb-2">
                   {feedbackData?.total || "0"}
                 </div>
                 <div className="flex items-center gap-2">
@@ -473,7 +436,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
               <CardFooter className="pt-0">
-                <CardDescription className="text-emerald-700">
+                <CardDescription className="text-xs md:text-sm text-emerald-700">
                   Engagements this month
                 </CardDescription>
               </CardFooter>
@@ -483,19 +446,19 @@ export default function DashboardPage() {
             <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100 border-l-4 border-emerald-400">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm font-medium text-emerald-800">
+                  <CardTitle className="text-xs md:text-sm font-medium text-emerald-800">
                     Available Fuel
                   </CardTitle>
-                  <div className="p-2 rounded-lg bg-emerald-200">
-                    <Fuel className="h-5 w-5 text-emerald-600" />
+                  <div className="p-1 md:p-2 rounded-lg bg-emerald-200">
+                    <Fuel className="h-4 md:h-5 w-4 md:w-5 text-emerald-600" />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl font-bold text-emerald-900 mb-2">
+                <div className="text-3xl md:text-4xl font-bold text-emerald-900 mb-1 md:mb-2">
                   {fuelAvailability.length || "0"}
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-1 md:gap-2 flex-wrap">
                   {fuelAvailability.map((fuel, index) => (
                     <span
                       key={index}
@@ -511,7 +474,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
               <CardFooter className="pt-0">
-                <CardDescription className="text-emerald-700">
+                <CardDescription className="text-xs md:text-sm text-emerald-700">
                   Currently available in station
                 </CardDescription>
               </CardFooter>
@@ -519,30 +482,26 @@ export default function DashboardPage() {
           </div>
 
           {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
             {/* Fuel Availability Bar Chart */}
             <Card className="border-0 shadow-lg bg-white">
               <CardHeader>
-                <CardTitle className="text-emerald-900">
-                  <Clock className="inline mr-2 h-5 w-5 text-emerald-600" />
+                <CardTitle className="text-base md:text-lg text-emerald-900">
+                  <Clock className="inline mr-2 h-4 md:h-5 w-4 md:w-5 text-emerald-600" />
                   Fuel Availability Hours
                 </CardTitle>
-                <CardDescription className="text-emerald-700">
+                <CardDescription className="text-xs md:text-sm text-emerald-700">
                   Current availability duration by fuel type
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
+                <div className="h-64 md:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={barChartData}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#E5E7EB"
-                        vertical={false}
-                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                       <XAxis
                         dataKey="name"
                         tick={{ fill: "#065F46", fontSize: 12 }}
@@ -569,10 +528,7 @@ export default function DashboardPage() {
                           color: "#065F46",
                           boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                         }}
-                        formatter={(value) => [
-                          `${value} hours`,
-                          "Availability",
-                        ]}
+                        formatter={(value) => [`${value} hours`, "Availability"]}
                         cursor={{ fill: "#D1FAE5" }}
                       />
                       <Bar
@@ -596,19 +552,19 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Driver's Rating Distribution Pie Chart */}
+            {/* Rating Distribution Pie Chart */}
             <Card className="border-0 shadow-lg bg-white">
               <CardHeader>
-                <CardTitle className="text-emerald-900">
-                  <Star className="inline mr-2 h-5 w-5 text-emerald-600" />
+                <CardTitle className="text-base md:text-lg text-emerald-900">
+                  <Star className="inline mr-2 h-4 md:h-5 w-4 md:w-5 text-emerald-600" />
                   Customer Feedback Distribution
                 </CardTitle>
-                <CardDescription className="text-emerald-700">
+                <CardDescription className="text-xs md:text-sm text-emerald-700">
                   Breakdown of customer feedback ratings
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
+                <div className="h-64 md:h-80">
                   {ratingDistribution.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -637,7 +593,7 @@ export default function DashboardPage() {
                           formatter={(value, entry, index) => {
                             const { payload } = entry;
                             return (
-                              <span className="text-emerald-800">
+                              <span className="text-xs md:text-sm text-emerald-800">
                                 {payload.name} ({payload.value})
                               </span>
                             );
@@ -659,24 +615,24 @@ export default function DashboardPage() {
 
       {/* AI Suggestion Modal */}
       <Dialog open={showAIModal} onOpenChange={setShowAIModal}>
-        <DialogContent className="max-w-2xl bg-emerald-50 border-emerald-200">
+        <DialogContent className="max-w-[95vw] md:max-w-2xl bg-emerald-50 border-emerald-200">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-emerald-900">
-              <Activity className="h-5 w-5 text-emerald-600" />
+            <DialogTitle className="flex items-center gap-2 text-base md:text-lg text-emerald-900">
+              <Activity className="h-4 md:h-5 w-4 md:w-5 text-emerald-600" />
               <span>AI Station Analysis</span>
             </DialogTitle>
           </DialogHeader>
 
           {aiSuggestion ? (
             <div className="space-y-4">
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col md:flex-row items-start gap-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-medium text-emerald-900 mb-1">
+                  <h3 className="text-base md:text-lg font-medium text-emerald-900 mb-1">
                     {aiSuggestion.name}
                   </h3>
                 </div>
                 <div
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(
+                  className={`px-3 py-1 rounded-full text-xs md:text-sm font-medium ${getCategoryColor(
                     aiSuggestion.category
                   )}`}
                 >
@@ -684,39 +640,39 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-xs md:text-sm font-medium text-emerald-600 mb-1">
                     Rating
                   </h4>
-                  <p className="text-2xl font-bold text-emerald-900">
+                  <p className="text-xl md:text-2xl font-bold text-emerald-900">
                     {aiSuggestion.rating}
-                    <span className="text-lg text-emerald-600">/5</span>
+                    <span className="text-sm md:text-lg text-emerald-600">/5</span>
                   </p>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-1">
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-xs md:text-sm font-medium text-emerald-600 mb-1">
                     Availability
                   </h4>
-                  <p className="text-2xl font-bold text-emerald-900">
+                  <p className="text-xl md:text-2xl font-bold text-emerald-900">
                     {aiSuggestion.availableHour}
-                    <span className="text-lg text-emerald-600"> hours</span>
+                    <span className="text-sm md:text-lg text-emerald-600"> hours</span>
                   </p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-2">
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-xs md:text-sm font-medium text-emerald-600 mb-2">
                     Detailed Analysis
                   </h4>
-                  <p className="text-emerald-800">{aiSuggestion.reason}</p>
+                  <p className="text-xs md:text-sm text-emerald-800">{aiSuggestion.reason}</p>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-emerald-200">
-                  <h4 className="text-sm font-medium text-emerald-600 mb-2">
+                <div className="bg-white p-3 md:p-4 rounded-lg border border-emerald-200">
+                  <h4 className="text-xs md:text-sm font-medium text-emerald-600 mb-2">
                     Actionable Recommendations
                   </h4>
-                  <p className="text-emerald-800">{aiSuggestion.suggestion}</p>
+                  <p className="text-xs md:text-sm text-emerald-800">{aiSuggestion.suggestion}</p>
                 </div>
               </div>
             </div>
