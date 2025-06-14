@@ -92,7 +92,7 @@ const App = () => {
               <Route path="dashboard" element={<DriverDashboard />} />
             </Route>
 
-            {/* Catch-all route */}
+            {/* Catch-all route (default page) */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
