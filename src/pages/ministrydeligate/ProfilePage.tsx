@@ -50,7 +50,6 @@ export default function ProfilePage() {
   useEffect(() => {
     const loadUserData = () => {
       try {
-        // Check both storage locations
         const storedUser =
           localStorage.getItem("userData") ||
           sessionStorage.getItem("userData");
@@ -171,7 +170,6 @@ export default function ProfilePage() {
         throw new Error(data.message || "Failed to update profile");
       }
 
-      // Create updated user object
       const updatedUser = {
         ...userData,
         first_name: editedUser.firstName,
@@ -179,18 +177,12 @@ export default function ProfilePage() {
         username: editedUser.username,
       };
 
-      // Determine which storage was used originally
       const storage = localStorage.getItem("userData")
         ? localStorage
         : sessionStorage;
 
-      // Update the correct storage
       storage.setItem("userData", JSON.stringify(updatedUser));
-
-      // Update local state
       setUserData(updatedUser);
-
-      // Notify other components (like AdminLayout)
       window.dispatchEvent(new CustomEvent("userUpdated"));
 
       toast({
@@ -198,7 +190,6 @@ export default function ProfilePage() {
         description: "Profile updated successfully",
       });
 
-      // Close the dialog after successful update
       setIsEditDialogOpen(false);
     } catch (error: any) {
       toast({
@@ -222,25 +213,28 @@ export default function ProfilePage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center mb-5">
+    <div className="p-4 md:p-6">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center mb-5 gap-2">
         <div className="flex items-center text-emerald-500">
           <User className="h-6 w-6 mr-2" />
           <h1 className="text-xl font-medium">Profile</h1>
         </div>
-        <p className="text-gray-400 text-sm ml-2">Profile management</p>
+        <p className="text-gray-400 text-sm md:ml-2">Profile management</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Profile Display & Edit Section */}
-        <div className="bg-[#F1F7F7] p-6 rounded-lg">
-          <div className="bg-white rounded-lg p-10">
-            <div className="flex justify-end mb-2">
+        <div className="bg-[#F1F7F7] p-4 md:p-6 rounded-lg">
+          <div className="bg-white rounded-lg p-6 md:p-10">
+            <div className="flex justify-end mb-4">
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="border-emerald-500 text-emerald-500 hover:bg-emerald-50"
+                    className="border-emerald-500 text-emerald-500 hover:bg-emerald-50 text-sm md:text-base"
+                    size="sm"
                   >
                     <Edit className="h-4 w-4 mr-2" /> Edit
                   </Button>
@@ -251,7 +245,7 @@ export default function ProfilePage() {
                   </DialogHeader>
                   <form onSubmit={handleProfileSubmit}>
                     <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label
                             htmlFor="firstName"
@@ -347,17 +341,17 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex flex-col items-center">
-              <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
+              <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-emerald-100 mb-4">
                 <img
                   src={userData.profile_pic}
                   alt={`${userData.first_name} ${userData.last_name}`}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <h2 className="text-xl font-medium mb-1">{`${userData.first_name} ${userData.last_name}`}</h2>
-              <p className="text-gray-500 mb-1">{userData.username}</p>
-              <p className="text-gray-500">{userData.email}</p>
-              <p className="text-gray-500 mt-2 px-3 py-1 bg-gray-100 rounded-full text-sm">
+              <h2 className="text-lg md:text-xl font-medium mb-1 text-center">{`${userData.first_name} ${userData.last_name}`}</h2>
+              <p className="text-gray-500 mb-1 text-center">{userData.username}</p>
+              <p className="text-gray-500 text-center">{userData.email}</p>
+              <p className="text-gray-500 mt-2 px-3 py-1 bg-gray-100 rounded-full text-xs md:text-sm">
                 {userData.role}
               </p>
             </div>
@@ -365,11 +359,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Change Password Section */}
-        <div className="bg-[#F1F7F7] p-6 rounded-lg">
-          <div className="bg-white rounded-lg p-6">
+        <div className="bg-[#F1F7F7] p-4 md:p-6 rounded-lg">
+          <div className="bg-white rounded-lg p-4 md:p-6">
             <h3 className="text-lg font-medium mb-4">Change Password</h3>
 
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <form onSubmit={handlePasswordSubmit} className="space-y-3 md:space-y-4">
               <div>
                 <label
                   htmlFor="oldPassword"
@@ -451,7 +445,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-center mt-4 md:mt-6">
                 <Button
                   type="submit"
                   className="bg-green-500 hover:bg-green-400 text-white w-full"
