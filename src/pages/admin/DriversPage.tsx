@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Eye, Trash2, Search, AlertCircle, ChevronLeft, ChevronRight, Edit } from "lucide-react";
+import { Eye, Trash2, Search, AlertCircle, ChevronLeft, ChevronRight, Edit, Menu, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,11 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface User {
-  id: number; // Sequential display ID (per page)
-  originalId: string; // Actual user ID from API
+  id: number;
+  originalId: string;
   firstName: string;
   lastName: string;
   username: string;
@@ -52,8 +54,19 @@ const DriversPage: React.FC = () => {
   });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
-  const itemsPerPage = 4;
+  const itemsPerPage = isMobile ? 3 : 4;
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchDrivers = async () => {
     setIsLoading(true);
@@ -79,15 +92,8 @@ const DriversPage: React.FC = () => {
       }
 
       const responseData = await response.json();
-      const data = Array.isArray(responseData.data)
-        ? responseData.data
-        : [];
+      const data = Array.isArray(responseData.data) ? responseData.data : [];
 
-      if (!Array.isArray(data)) {
-        throw new Error("Invalid data format received from server");
-      }
-
-      // Sort by first name, then last name
       const sortedData = [...data].sort((a, b) => {
         const aFirstName = (a.first_name || '').toLowerCase();
         const bFirstName = (b.first_name || '').toLowerCase();
@@ -99,7 +105,6 @@ const DriversPage: React.FC = () => {
         return aLastName.localeCompare(bLastName);
       });
 
-      // Map with original IDs (sequential IDs will be assigned per page)
       const driversData = sortedData
         .map((user: any) => ({
           originalId: user.id,
@@ -154,7 +159,6 @@ const DriversPage: React.FC = () => {
         throw new Error(errorData.message || "Failed to delete driver");
       }
 
-      // Optimistic update - remove the driver from state immediately
       setDrivers(prevDrivers => prevDrivers.filter(driver => driver.originalId !== driverToDelete));
       
       toast({
@@ -168,7 +172,6 @@ const DriversPage: React.FC = () => {
         description: error.message || "Failed to delete driver",
         variant: "destructive",
       });
-      // If error occurs, refetch to ensure state is correct
       fetchDrivers();
     } finally {
       setIsDeleting(false);
@@ -222,7 +225,6 @@ const DriversPage: React.FC = () => {
         throw new Error(errorData.message || "Failed to update driver");
       }
 
-      // Optimistic update - update the driver in state immediately
       setDrivers(prevDrivers => 
         prevDrivers.map(driver => 
           driver.originalId === driverToEdit.originalId
@@ -249,24 +251,20 @@ const DriversPage: React.FC = () => {
         description: error.message || "Failed to update driver",
         variant: "destructive",
       });
-      // If error occurs, refetch to ensure state is correct
       fetchDrivers();
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Filter drivers based on search term
   const filteredDrivers = drivers.filter(driver =>
     Object.values(driver).some(
       value => value.toString().toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
-  // Calculate total pages based on filtered results
   const calculatedTotalPages = Math.max(1, Math.ceil(filteredDrivers.length / itemsPerPage));
 
-  // Get current drivers for pagination with sequential IDs per page
   const currentDrivers = filteredDrivers
     .slice(
       (currentPage - 1) * itemsPerPage,
@@ -277,7 +275,6 @@ const DriversPage: React.FC = () => {
       id: (currentPage - 1) * itemsPerPage + index + 1
     }));
 
-  // Reset to page 1 when search term changes
   useEffect(() => {
     setCurrentPage(1);
     setTotalPages(calculatedTotalPages);
@@ -312,7 +309,7 @@ const DriversPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -342,7 +339,7 @@ const DriversPage: React.FC = () => {
             <DialogTitle>Edit Driver</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   First Name *
@@ -417,8 +414,8 @@ const DriversPage: React.FC = () => {
         <p className="text-gray-400 text-sm ml-2">Drivers management</p>
       </div>
 
-      <div className="bg-[#F1F7F7] p-6 rounded-lg">
-        <div className="w-72 relative mb-5">
+      <div className="bg-[#F1F7F7] p-4 md:p-6 rounded-lg">
+        <div className="w-full md:w-72 relative mb-5">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Search driver"
@@ -432,6 +429,64 @@ const DriversPage: React.FC = () => {
           {currentDrivers.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               {searchTerm ? "No matching drivers found" : "No drivers available"}
+            </div>
+          ) : isMobile ? (
+            <div className="divide-y">
+              {currentDrivers.map((driver) => (
+                <div key={driver.originalId} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                        <img
+                          src={driver.avatar}
+                          alt={`${driver.firstName} ${driver.lastName}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">{driver.firstName} {driver.lastName}</h3>
+                        <p className="text-sm text-gray-500">@{driver.username}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-emerald-600 hover:bg-emerald-100 h-8 w-8"
+                        onClick={() => handleEditClick(driver)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Link to={`/admin/drivers/${driver.originalId}`}>
+                        <Button variant="ghost" size="icon" className="text-emerald-600 hover:bg-emerald-100 h-8 w-8">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:bg-red-100 h-8 w-8"
+                        onClick={() => {
+                          setDriverToDelete(driver.originalId);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Email:</span>
+                      <span className="ml-2 text-emerald-600 truncate">{driver.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">ID:</span>
+                      <span className="ml-2">{driver.id}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <>
@@ -497,38 +552,38 @@ const DriversPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-gray-500">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-                  {Math.min(currentPage * itemsPerPage, filteredDrivers.length)} of{' '}
-                  {filteredDrivers.length} drivers
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium">
-                    Page {currentPage} of {calculatedTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage(p => Math.min(calculatedTotalPages, p + 1))}
-                    disabled={currentPage === calculatedTotalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
             </>
           )}
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col md:flex-row items-center justify-between p-4 border-t gap-4 md:gap-0">
+            <div className="text-sm text-gray-500">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+              {Math.min(currentPage * itemsPerPage, filteredDrivers.length)} of{' '}
+              {filteredDrivers.length} drivers
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium">
+                Page {currentPage} of {calculatedTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(p => Math.min(calculatedTotalPages, p + 1))}
+                disabled={currentPage === calculatedTotalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
