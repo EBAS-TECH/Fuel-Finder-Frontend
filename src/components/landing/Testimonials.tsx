@@ -32,7 +32,7 @@ const Testimonials = () => {
       setActiveIndex((prevIndex) => 
         prevIndex === testimonials.length - 1 ? 0 : prevIndex + 1
       );
-    }, 2000);
+    }, 8000);
 
     return () => clearInterval(interval);
   }, []);
