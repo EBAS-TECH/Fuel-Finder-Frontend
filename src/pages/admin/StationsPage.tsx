@@ -7,6 +7,8 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,7 +81,7 @@ export default function StationsPage() {
       username: "",
       email: "",
       role: "GAS_STATION",
-      password: "123456", // Default password as per your API
+      password: "123456",
     },
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -88,8 +90,19 @@ export default function StationsPage() {
     name: string;
     email: string;
   } | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [expandedStation, setExpandedStation] = useState<string | null>(null);
 
-  const itemsPerPage = 4;
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const itemsPerPage = isMobile ? 3 : 4;
 
   useEffect(() => {
     const token = getAuthToken();
@@ -363,6 +376,10 @@ export default function StationsPage() {
     }
   };
 
+  const toggleExpandStation = (stationId: string) => {
+    setExpandedStation(expandedStation === stationId ? null : stationId);
+  };
+
   const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
   const paginatedStations = filteredStations.slice(
     (currentPage - 1) * itemsPerPage,
@@ -370,7 +387,7 @@ export default function StationsPage() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="mb-5">
         <div className="flex items-start">
           <div className="flex items-center text-green-500 mr-2 h-full">
@@ -381,9 +398,9 @@ export default function StationsPage() {
               viewBox="0 0 24 24"
               fill="none"
               stroke="#12e22b"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               className="lucide lucide-fuel-icon lucide-fuel"
             >
               <line x1="3" x2="15" y1="22" y2="22" />
@@ -402,9 +419,8 @@ export default function StationsPage() {
           </div>
         </div>
       </div>
-      <div className="bg-[#F1F7F7] p-6 rounded-lg">
-        
-        <div className="flex justify-between items-center mb-5">
+      <div className="bg-[#F1F7F7] p-4 md:p-6 rounded-lg">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4">
           <Tabs
             defaultValue="PENDING"
             value={activeTab}
@@ -412,14 +428,14 @@ export default function StationsPage() {
               setActiveTab(value as "PENDING" | "VERIFIED" | "NOT-VERIFIED")
             }
           >
-            <TabsList className="grid grid-cols-3 max-w-[400px] bg-transparent gap-2">
+            <TabsList className="grid grid-cols-3 w-full md:w-[400px] bg-transparent gap-2">
               <TabsTrigger
                 value="PENDING"
                 className={`bg-white border ${
                   activeTab === "PENDING"
                     ? "border-green-500 text-green-500"
                     : "border-transparent"
-                } rounded-lg shadow-sm`}
+                } rounded-lg shadow-sm text-xs md:text-sm`}
               >
                 Pending
               </TabsTrigger>
@@ -429,7 +445,7 @@ export default function StationsPage() {
                   activeTab === "VERIFIED"
                     ? "border-green-500 text-green-500"
                     : "border-transparent"
-                } rounded-lg shadow-sm`}
+                } rounded-lg shadow-sm text-xs md:text-sm`}
               >
                 Approved
               </TabsTrigger>
@@ -439,14 +455,14 @@ export default function StationsPage() {
                   activeTab === "NOT-VERIFIED"
                     ? "border-green-500 text-green-500"
                     : "border-transparent"
-                } rounded-lg shadow-sm`}
+                } rounded-lg shadow-sm text-xs md:text-sm`}
               >
                 Rejected
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="w-72 relative">
+          <div className="w-full md:w-72 relative">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search station"
@@ -463,133 +479,241 @@ export default function StationsPage() {
           </div>
         ) : (
           <div className="bg-white rounded-lg overflow-hidden">
-            <Table className="w-full border-collapse">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 w-16 font-medium">
-                    ID
-                  </TableHead>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
-                    Station Name
-                  </TableHead>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
-                    Username
-                  </TableHead>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
-                    Email
-                  </TableHead>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
-                    Address
-                  </TableHead>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
-                    Status
-                  </TableHead>
-                  <TableHead className="bg-green-500 text-white py-3 px-4 text-center font-medium">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            {isMobile ? (
+              <div className="space-y-2 p-2">
                 {paginatedStations.length > 0 ? (
-                  paginatedStations.map((station, index) => (
-                    <TableRow
+                  paginatedStations.map((station) => (
+                    <div
                       key={station.id}
-                      className="border-b hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/admin/stations/${station.id}`)}
+                      className="border rounded-lg p-3 hover:bg-gray-50"
                     >
-                      <TableCell className="py-3 px-4 text-base">
-                        {(currentPage - 1) * itemsPerPage + index + 1}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-base">
+                      <div
+                        className="flex justify-between items-center cursor-pointer"
+                        onClick={() => toggleExpandStation(station.id)}
+                      >
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gray-100">
                             <div className="w-6 h-6 flex items-center justify-center text-xs font-medium text-gray-600">
                               {station.en_name.charAt(0)}
                             </div>
                           </div>
-                          {station.en_name}
+                          <div>
+                            <h3 className="font-medium">{station.en_name}</h3>
+                            <p className="text-sm text-gray-500">
+                              {station.user?.username || "N/A"}
+                            </p>
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-base">
-                        {station.user?.username || "N/A"}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-green-500 text-base">
-                        {station.user?.email || "N/A"}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-base">
-                        {station.address}
-                      </TableCell>
-                      <TableCell className="py-3 px-4 text-base">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            station.status === "VERIFIED"
-                              ? "bg-green-100 text-green-800"
-                              : station.status === "NOT-VERIFIED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {station.status === "NOT-VERIFIED"
-                            ? "REJECTED"
-                            : station.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-3 px-4">
-                        <div
-                          className="flex justify-center gap-2"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              navigate(`/admin/stations/${station.id}`)
-                            }
-                          >
-                            <Eye className="h-4 w-4 text-green-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-green-500"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditStation(station);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(station);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                        <div>
+                          {expandedStation === station.id ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+
+                      {expandedStation === station.id && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-500">Email:</span>
+                            <span className="text-sm text-green-500">
+                              {station.user?.email || "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-500">Address:</span>
+                            <span className="text-sm">{station.address}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-500">Status:</span>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${
+                                station.status === "VERIFIED"
+                                  ? "bg-green-100 text-green-800"
+                                  : station.status === "NOT-VERIFIED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {station.status === "NOT-VERIFIED"
+                                ? "REJECTED"
+                                : station.status}
+                            </span>
+                          </div>
+                          <div className="flex justify-end gap-2 pt-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                navigate(`/admin/stations/${station.id}`)
+                              }
+                              className="h-8 w-8"
+                            >
+                              <Eye className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditStation(station);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(station);
+                              }}
+                              className="h-8 w-8"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))
                 ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-4 text-center text-gray-500 text-base"
-                    >
-                      No stations found
-                    </TableCell>
-                  </TableRow>
+                  <div className="py-4 text-center text-gray-500">
+                    No stations found
+                  </div>
                 )}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table className="w-full border-collapse">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 w-16 font-medium">
+                      ID
+                    </TableHead>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
+                      Station Name
+                    </TableHead>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
+                      Username
+                    </TableHead>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
+                      Email
+                    </TableHead>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
+                      Address
+                    </TableHead>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 font-medium">
+                      Status
+                    </TableHead>
+                    <TableHead className="bg-green-500 text-white py-3 px-4 text-center font-medium">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedStations.length > 0 ? (
+                    paginatedStations.map((station, index) => (
+                      <TableRow
+                        key={station.id}
+                        className="border-b hover:bg-gray-50 cursor-pointer"
+                        onClick={() => navigate(`/admin/stations/${station.id}`)}
+                      >
+                        <TableCell className="py-3 px-4 text-base">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-base">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gray-100">
+                              <div className="w-6 h-6 flex items-center justify-center text-xs font-medium text-gray-600">
+                                {station.en_name.charAt(0)}
+                              </div>
+                            </div>
+                            {station.en_name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-base">
+                          {station.user?.username || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-green-500 text-base">
+                          {station.user?.email || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-base">
+                          {station.address}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-base">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              station.status === "VERIFIED"
+                                ? "bg-green-100 text-green-800"
+                                : station.status === "NOT-VERIFIED"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {station.status === "NOT-VERIFIED"
+                              ? "REJECTED"
+                              : station.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          <div
+                            className="flex justify-center gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                navigate(`/admin/stations/${station.id}`)
+                              }
+                            >
+                              <Eye className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-green-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditStation(station);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(station);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        className="py-4 text-center text-gray-500 text-base"
+                      >
+                        No stations found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         )}
 
         {filteredStations.length > 0 && (
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex flex-col md:flex-row items-center justify-between mt-4 gap-4">
             <div className="text-sm text-gray-500">
               Showing {(currentPage - 1) * itemsPerPage + 1} -{" "}
               {Math.min(currentPage * itemsPerPage, filteredStations.length)} of{" "}
@@ -623,6 +747,7 @@ export default function StationsPage() {
                     variant={currentPage === pageNum ? "default" : "outline"}
                     size="icon"
                     onClick={() => setCurrentPage(pageNum)}
+                    className="text-xs md:text-sm"
                   >
                     {pageNum}
                   </Button>
@@ -644,13 +769,13 @@ export default function StationsPage() {
 
       {/* Edit Station Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg">Edit Station</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="en_name" className="text-base">
                     English Name
@@ -679,7 +804,7 @@ export default function StationsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tin_number" className="text-base">
                     TIN Number
@@ -708,7 +833,7 @@ export default function StationsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="latitude" className="text-base">
                     Latitude
@@ -747,7 +872,7 @@ export default function StationsPage() {
 
               <div className="border-t pt-4">
                 <h3 className="font-medium mb-4 text-base">User Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name" className="text-base">
                       First Name
@@ -785,7 +910,7 @@ export default function StationsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                   <div className="space-y-2">
                     <Label htmlFor="username" className="text-base">
                       Username
