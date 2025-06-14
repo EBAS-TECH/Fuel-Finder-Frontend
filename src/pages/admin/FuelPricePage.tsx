@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Pencil, Trash2, X, AlertTriangle } from "lucide-react";
+import { Search, Pencil, Trash2, X, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
@@ -43,12 +43,23 @@ export default function FuelPricePage() {
     open: false,
     fuelType: "",
   });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // Form state
   const [fuelType, setFuelType] = useState("PETROL");
   const [price, setPrice] = useState("");
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getAuthToken = () => {
     return localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
@@ -124,7 +135,7 @@ export default function FuelPricePage() {
 
     setFuelType(fuel.fuel_type);
     setPrice(fuel.price.toString());
-    setEndDate(new Date(fuel.updated_at)); // Using updated_at as end_date
+    setEndDate(new Date(fuel.updated_at));
     setIsEditMode(true);
     setIsDialogOpen(true);
     setError("");
@@ -250,32 +261,36 @@ export default function FuelPricePage() {
     }
   };
 
+  const toggleExpandRow = (id: string) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+
   if (isLoading) {
     return <Spinner />;
   }
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       {/* Header and search section */}
-      <div className="flex items-center mb-5">
+      <div className="flex items-center mb-4 md:mb-5">
         <div className="flex items-center text-green-500">
           <svg className="h-6 w-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M8 10h.01M16 10h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <h1 className="text-xl font-medium">Fuel Price</h1>
+          <h1 className="text-lg md:text-xl font-medium">Fuel Price</h1>
         </div>
-        <p className="text-gray-400 text-sm ml-2">Fuel Price Management</p>
+        <p className="text-gray-400 text-xs md:text-sm ml-2">Fuel Price Management</p>
       </div>
 
-      <div className="bg-[#F1F7F7] p-6 rounded-lg">
-        <div className="flex justify-end items-center mb-4 gap-4">
-          <div className="relative w-64">
+      <div className="bg-[#F1F7F7] p-4 md:p-6 rounded-lg">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+          <div className="relative w-full md:w-64">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search fuel type"
-              className="pl-10 bg-white border rounded-lg h-9 focus:ring-green-500"
+              className="pl-10 bg-white border rounded-lg h-9 focus:ring-green-500 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -283,56 +298,112 @@ export default function FuelPricePage() {
           
           <Button
             onClick={handleAddFuelPrice}
-            className="bg-green-500 hover:bg-green-600 text-white whitespace-nowrap border border-green-500 rounded-lg shadow-sm"
+            className="bg-green-500 hover:bg-green-600 text-white whitespace-nowrap border border-green-500 rounded-lg shadow-sm w-full md:w-auto"
           >
             Add Fuel Type
           </Button>
         </div>
 
         <div className="bg-white rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="bg-green-500 text-white font-normal w-16 text-center">ID</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Fuel Type</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Price (Br/L)</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Created At</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal">Updated At</TableHead>
-                <TableHead className="bg-green-500 text-white font-normal text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFuelPrices.map((fuel, index) => (
-                <TableRow key={fuel.id}>
-                  <TableCell className="text-center">{index + 1}</TableCell>
-                  <TableCell>{fuel.fuel_type}</TableCell>
-                  <TableCell>{fuel.price.toFixed(2)}</TableCell>
-                  <TableCell>{format(new Date(fuel.created_at), "MMM d, yyyy")}</TableCell>
-                  <TableCell>{format(new Date(fuel.updated_at), "MMM d, yyyy")}</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditFuelPrice(fuel)}
-                        className="h-8 w-8 p-0 text-green-500 hover:text-green-600 hover:bg-green-50"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => confirmDeleteByType(fuel.fuel_type)}
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" strokeWidth={2.5} />
-                      </Button>
+          {isMobile ? (
+            <div className="divide-y">
+              {filteredFuelPrices.map((fuel) => (
+                <div key={fuel.id} className="p-4 hover:bg-gray-50">
+                  <div 
+                    className="flex justify-between items-center cursor-pointer"
+                    onClick={() => toggleExpandRow(fuel.id)}
+                  >
+                    <div>
+                      <h3 className="font-medium">{fuel.fuel_type}</h3>
+                      <p className="text-sm text-gray-500">{fuel.price.toFixed(2)} Br/L</p>
                     </div>
-                  </TableCell>
-                </TableRow>
+                    <div>
+                      {expandedRow === fuel.id ? (
+                        <ChevronUp className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-gray-500" />
+                      )}
+                    </div>
+                  </div>
+
+                  {expandedRow === fuel.id && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Created:</span>
+                        <span>{format(new Date(fuel.created_at), "MMM d, yyyy")}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Updated:</span>
+                        <span>{format(new Date(fuel.updated_at), "MMM d, yyyy")}</span>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditFuelPrice(fuel)}
+                          className="h-8 w-8 text-green-500 hover:bg-green-50"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => confirmDeleteByType(fuel.fuel_type)}
+                          className="h-8 w-8 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={2.5} />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="bg-green-500 text-white font-normal w-16 text-center">ID</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal">Fuel Type</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal">Price (Br/L)</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal">Created At</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal">Updated At</TableHead>
+                  <TableHead className="bg-green-500 text-white font-normal text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredFuelPrices.map((fuel, index) => (
+                  <TableRow key={fuel.id}>
+                    <TableCell className="text-center">{index + 1}</TableCell>
+                    <TableCell>{fuel.fuel_type}</TableCell>
+                    <TableCell>{fuel.price.toFixed(2)}</TableCell>
+                    <TableCell>{format(new Date(fuel.created_at), "MMM d, yyyy")}</TableCell>
+                    <TableCell>{format(new Date(fuel.updated_at), "MMM d, yyyy")}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditFuelPrice(fuel)}
+                          className="h-8 w-8 p-0 text-green-500 hover:text-green-600 hover:bg-green-50"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => confirmDeleteByType(fuel.fuel_type)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={2.5} />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
 
@@ -340,7 +411,7 @@ export default function FuelPricePage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-medium text-green-500">
+            <DialogTitle className="text-lg md:text-xl font-medium text-green-500">
               {isEditMode ? "Edit Fuel Price" : "Add Fuel Price"}
             </DialogTitle>
           </DialogHeader>
@@ -440,7 +511,7 @@ export default function FuelPricePage() {
       <Dialog open={deleteTypeDialog.open} onOpenChange={(open) => setDeleteTypeDialog({...deleteTypeDialog, open})}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-medium text-red-500 flex items-center">
+            <DialogTitle className="text-lg md:text-xl font-medium text-red-500 flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2" />
               Confirm Deletion
             </DialogTitle>
