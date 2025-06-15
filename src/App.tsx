@@ -1,3 +1,4 @@
+// MIT License © 2025 EBAS-TECH | RasAbrish
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
