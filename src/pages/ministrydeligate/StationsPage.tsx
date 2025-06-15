@@ -378,149 +378,133 @@ const DelegateStationsPage = () => {
   }
 
   return (
-    <div className="bg-[#F7F9F9] min-h-screen p-4 md:p-6">
+    <div className="bg-[#F7F9F9] min-h-screen">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-800">Stations</h1>
         <p className="text-sm text-gray-500">View Station Report</p>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-sm">
-        {/* Search and Filter Section - Responsive Layout */}
-        <div className="flex flex-col gap-4 mb-6">
-          {/* Search Input - Full width on mobile */}
-          <div className="w-full">
-            <div className="relative">
-              <Input
-                placeholder="Search station"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onKeyPress={handleKeyPress}
-                className="pl-10 bg-[#F2FCE2] border-none rounded-full focus:ring-green-500 w-full"
-              />
-              <div className="absolute inset-y-0 left-3 flex items-center">
-                <svg className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+        <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
+          <div className="relative w-full md:w-64">
+            <Input
+              placeholder="Search station"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onKeyPress={handleKeyPress}
+              className="pl-10 bg-[#F2FCE2] border-none rounded-full focus:ring-green-500"
+            />
+            <div className="absolute inset-y-0 left-3 flex items-center">
+              <svg className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
           </div>
 
-          {/* Filter Controls - Responsive Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-            <div className="sm:col-span-1">
-              <Select
-                value={rankFilter}
-                onValueChange={handleRankFilterChange}
-              >
-                <SelectTrigger className="w-full bg-white border text-gray-700">
-                  <SelectValue placeholder="Filter by AI rank" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Ranks</SelectItem>
-                  <SelectItem value="low">Low Rank</SelectItem>
-                  <SelectItem value="average">Average Rank</SelectItem>
-                  <SelectItem value="high">High Rank</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex gap-2 flex-wrap">
+            <Select
+              value={rankFilter}
+              onValueChange={handleRankFilterChange}
+            >
+              <SelectTrigger className="w-[180px] bg-white border text-gray-700">
+                <SelectValue placeholder="Filter by AI rank" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ranks</SelectItem>
+                <SelectItem value="low">Low Rank</SelectItem>
+                <SelectItem value="average">Average Rank</SelectItem>
+                <SelectItem value="high">High Rank</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <div className="sm:col-span-1">
-              <Popover>
-                <PopoverTrigger asChild ref={startDatePopoverTriggerRef}>
-                  <Button
-                    variant="outline"
-                    className="w-full bg-white border text-gray-700 justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "MMM dd, yyyy") : <span>Start date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setStartDate(date);
-                        if (startDatePopoverTriggerRef.current) {
-                          startDatePopoverTriggerRef.current.click();
-                        }
+            <Popover>
+              <PopoverTrigger asChild ref={startDatePopoverTriggerRef}>
+                <Button
+                  variant="outline"
+                  className="bg-white border text-gray-700 justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "MMM dd, yyyy") : <span>Start date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setStartDate(date);
+                      if (startDatePopoverTriggerRef.current) {
+                        startDatePopoverTriggerRef.current.click();
                       }
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
 
-            <div className="sm:col-span-1">
-              <Popover>
-                <PopoverTrigger asChild ref={endDatePopoverTriggerRef}>
-                  <Button
-                    variant="outline"
-                    className="w-full bg-white border text-gray-700 justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "MMM dd, yyyy") : <span>End date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setEndDate(date);
-                        if (endDatePopoverTriggerRef.current) {
-                          endDatePopoverTriggerRef.current.click();
-                        }
+            <Popover>
+              <PopoverTrigger asChild ref={endDatePopoverTriggerRef}>
+                <Button
+                  variant="outline"
+                  className="bg-white border text-gray-700 justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "MMM dd, yyyy") : <span>End date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setEndDate(date);
+                      if (endDatePopoverTriggerRef.current) {
+                        endDatePopoverTriggerRef.current.click();
                       }
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
 
-            <div className="sm:col-span-1">
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-                onClick={handleFilter}
-              >
-                Filter
-              </Button>
-            </div>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleFilter}
+            >
+              Filter
+            </Button>
 
-            <div className="sm:col-span-2">
-              <Button
-                className="w-full bg-green-800 hover:bg-green-900 text-white font-bold"
-                onClick={exportToPDF}
-              >
-                Export PDF
-              </Button>
-            </div>
+            <Button
+              className="bg-green-800 hover:bg-green-900 text-white font-bold"
+              onClick={exportToPDF}
+            >
+              Export PDF
+            </Button>
           </div>
         </div>
 
-        {/* Table Section - Responsive */}
         <div className="overflow-x-auto">
-          <Table className="min-w-full">
+          <Table>
             <TableHeader className="bg-green-600">
               <TableRow>
-                <TableHead className="text-white text-left hidden sm:table-cell">ID</TableHead>
-                <TableHead className="text-white text-left">Station</TableHead>
-                <TableHead className="text-white text-left hidden md:table-cell">TIN</TableHead>
+                <TableHead className="text-white text-left">ID</TableHead>
+                <TableHead className="text-white text-left">Station Name</TableHead>
+                <TableHead className="text-white text-left">TIN Number</TableHead>
                 <TableHead className="text-white text-center">Rating</TableHead>
-                <TableHead className="text-white text-center hidden sm:table-cell">Hours</TableHead>
-                <TableHead className="text-white text-center hidden md:table-cell">AI Rank</TableHead>
-                <TableHead className="text-white text-center">Details</TableHead>
+                <TableHead className="text-white text-center">Available Hours</TableHead>
+                <TableHead className="text-white text-center">AI Rank</TableHead>
+                <TableHead className="text-white text-left">Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {currentStations.length > 0 ? (
                 currentStations.map((station, index) => (
                   <TableRow key={station.stationId} className="border-b hover:bg-green-50">
-                    <TableCell className="text-left hidden sm:table-cell">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                    <TableCell className="text-left">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                     <TableCell className="font-medium text-left">
                       <div className="flex items-center">
                         <div className="w-8 h-8 rounded-full bg-gray-200 mr-2 overflow-hidden flex items-center justify-center">
@@ -533,30 +517,27 @@ const DelegateStationsPage = () => {
                             }}
                           />
                         </div>
-                        <div>
-                          <div className="font-medium">{station.name}</div>
-                          <div className="text-xs text-gray-500 md:hidden">{station.tinNumber}</div>
-                        </div>
+                        {station.name}
                       </div>
                     </TableCell>
-                    <TableCell className="text-left hidden md:table-cell">{station.tinNumber}</TableCell>
+                    <TableCell className="text-left">{station.tinNumber}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex flex-col items-center">
                         {renderStars(station.rating)}
-                        <span className="text-xs text-gray-500 mt-1 hidden sm:block">
+                        <span className="text-xs text-gray-500 mt-1">
                           {station.rating.toFixed(1)} average
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center hidden sm:table-cell">{Math.floor(station.availaleHour)}</TableCell>
-                    <TableCell className="text-center hidden md:table-cell">
+                    <TableCell className="text-center">{Math.floor(station.availaleHour)}</TableCell>
+                    <TableCell className="text-center">
                       {renderAISummary(station.category)}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-left">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-green-600 p-0 hover:bg-green-100 mx-auto"
+                        className="text-green-600 p-0 hover:bg-green-100"
                         onClick={() => navigateToDetail(station)}
                       >
                         <Eye className="h-5 w-5" />
@@ -575,9 +556,8 @@ const DelegateStationsPage = () => {
           </Table>
         </div>
 
-        {/* Pagination - Responsive */}
         {filteredStations.length > itemsPerPage && (
-          <div className="flex flex-col sm:flex-row items-center justify-between py-4 gap-4">
+          <div className="flex items-center justify-between py-4">
             <div className="text-sm text-gray-500">
               Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredStations.length)} of {filteredStations.length}
             </div>
@@ -591,9 +571,8 @@ const DelegateStationsPage = () => {
                   />
                 </PaginationItem>
 
-                {/* Show limited page numbers on mobile */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <PaginationItem key={page} className="hidden sm:block">
+                  <PaginationItem key={page}>
                     <PaginationLink
                       onClick={() => handlePageChange(page)}
                       isActive={page === currentPage}
@@ -603,13 +582,6 @@ const DelegateStationsPage = () => {
                     </PaginationLink>
                   </PaginationItem>
                 ))}
-
-                {/* Show current page on mobile */}
-                <PaginationItem className="sm:hidden">
-                  <PaginationLink isActive className="bg-green-600 text-white">
-                    {currentPage}
-                  </PaginationLink>
-                </PaginationItem>
 
                 <PaginationItem>
                   <PaginationNext
