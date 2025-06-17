@@ -377,7 +377,7 @@ export default function AdminLayout() {
               <img
                 src={logoImage}
                 alt="Fuel Finder Logo"
-                className="w-12 md:w-16 h-auto"
+                className="w-12 md:w-16 h-auto ml-11"
               />
             </Link>
           </div>
@@ -436,7 +436,7 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Mobile Menu Overlay */}
         {mobileMenuOpen && (
           <div 
@@ -446,11 +446,12 @@ export default function AdminLayout() {
         )}
 
         <aside className={cn(
-          "w-64 bg-white shadow-sm rounded-r-2xl mt-2 ml-2 h-[calc(100vh-5rem)] sticky top-4 z-30 transition-transform duration-300",
-          "fixed md:relative md:translate-x-0",
+          "w-64 bg-white shadow-sm rounded-r-2xl mt-2 ml-2 flex flex-col",
+          "fixed md:relative md:translate-x-0 h-[calc(100vh-5rem)] md:h-auto",
+          "overflow-y-auto z-30 transition-transform duration-300",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}>
-          <div className="p-4 h-full flex flex-col overflow-y-auto">
+          <div className="p-4 flex-1">
             <div className="space-y-2 mt-4">
               <SidebarItem
                 icon={<LayoutDashboard className="h-5 w-5" />}
@@ -530,7 +531,8 @@ export default function AdminLayout() {
         </aside>
 
         <main className={cn(
-          "flex-1 p-4 md:p-6 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm transition-all duration-300",
+          "flex-1 p-4 md:p-6 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm",
+          "overflow-y-auto transition-all duration-300",
           mobileMenuOpen ? "ml-0" : "md:ml-4"
         )}>
           {pathName.includes("/admin/dashboard") ? (

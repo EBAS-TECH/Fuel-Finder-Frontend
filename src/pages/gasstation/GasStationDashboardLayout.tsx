@@ -202,7 +202,7 @@ export default function GasStationDashboardLayout() {
               <img
                 src={logoImage}
                 alt="Fuel Finder Logo"
-                className="w-12 md:w-16 h-auto"
+                className="w-12 md:w-16 h-auto ml-11"
               />
             </Link>
           </div>

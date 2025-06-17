@@ -198,7 +198,7 @@ export default function DeligatedashboardLayout() {
               <img
                 src={logoImage}
                 alt="Fuel Finder Logo"
-                className="w-12 sm:w-16 h-auto"
+                className="w-12 sm:w-16 h-auto ml-11"
               />
             </Link>
           </div>
@@ -281,7 +281,7 @@ export default function DeligatedashboardLayout() {
                 icon={<LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />}
                 label="Stations"
                 to="/ministry-delegate/stations"
-                active={pathName.startsWith("/ministry-delegate/stations")}
+                active={pathName.startsWith("/ministry-delegate")}
                 onClick={() => setMobileMenuOpen(false)}
               />
 

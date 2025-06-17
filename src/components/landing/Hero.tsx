@@ -5,7 +5,7 @@ import dashboardImage from "../../assets/mock.png";
 
 const Hero = () => {
   return (
-    <div className="container mx-auto py-16 px-4 lg:px-0">
+    <div className="container mx-auto py-24 px-4 lg:px-0">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div className="animate-fade-in">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
