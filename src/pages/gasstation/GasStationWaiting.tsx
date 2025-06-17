@@ -4,6 +4,22 @@ import { useToast } from "@/components/ui/use-toast";
 import logoImage from "@/assets/newlog.png";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+interface StationData {
+  id: string;
+  en_name: string;
+  am_name: string;
+  tin_number: string;
+  user_id: string;
+  address: string;
+  availability: boolean;
+  status: "PENDING" | "VERIFIED" | "REJECTED";
+  logo: string;
+  created_at: string;
+  updated_at: string | null;
+  latitude: number;
+  longitude: number;
+}
+
 interface UserData {
   id: string;
   first_name: string;
@@ -26,27 +42,29 @@ const GasStationWaiting = () => {
     "Checking your approval status..."
   );
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [stationData, setStationData] = useState<StationData | null>(null);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+    return {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  };
 
   const checkApprovalStatus = async () => {
     try {
-      // Get auth token from storage
-      const token =
-        localStorage.getItem("authToken") ||
-        sessionStorage.getItem("authToken");
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
       if (!token) {
         throw new Error("Authentication token not found");
       }
 
-      // Get user data from storage or fetch it if needed
       let currentUserData: UserData | null = null;
-      const storedUserData =
-        localStorage.getItem("userData") || sessionStorage.getItem("userData");
+      const storedUserData = localStorage.getItem("userData") || sessionStorage.getItem("userData");
 
       if (storedUserData) {
-        // Use stored user data if available
         currentUserData = JSON.parse(storedUserData);
       } else {
-        // Fetch current user data if not in storage
         const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
           method: "GET",
           headers: {
@@ -56,13 +74,11 @@ const GasStationWaiting = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to fetch user data");
+          setStatusMessage("Your station is pending approval");
+          return;
         }
 
         currentUserData = await response.json();
-
-        // Store the user data for future use
         if (localStorage.getItem("authToken")) {
           localStorage.setItem("userData", JSON.stringify(currentUserData));
         } else {
@@ -71,51 +87,48 @@ const GasStationWaiting = () => {
       }
 
       if (!currentUserData) {
-        throw new Error("User data not available");
+        setStatusMessage("Your station is pending approval");
+        return;
       }
 
       setUserData(currentUserData);
 
-      // Check if the station is approved
-      if (currentUserData.station_approved) {
+      const stationResponse = await fetch(
+        `${API_BASE_URL}/api/station/user/${currentUserData.id}`,
+        { headers: getAuthHeaders() }
+      );
+
+      if (!stationResponse.ok) {
+        setStatusMessage("Your station is pending approval");
+        return;
+      }
+
+      const { data: stationData } = await stationResponse.json();
+      setStationData(stationData);
+
+      if (stationData.status === "VERIFIED") {
         toast({
           title: "Station Approved!",
-          description:
-            "Your gas station has been approved. Redirecting to dashboard...",
+          description: "Your gas station has been approved. Redirecting to dashboard...",
         });
-
         setTimeout(() => {
           navigate("/gas-station/dashboard");
         }, 1500);
+      } else if (stationData.status === "REJECTED") {
+        setStatusMessage("Your gas station registration has been rejected. Please contact support.");
       } else {
-        setStatusMessage(
-          "Your gas station registration is pending approval from the administrator."
-        );
+        setStatusMessage("Your station is pending approval");
       }
     } catch (error: unknown) {
-      let errorMessage = "Error checking approval status";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      setStatusMessage(errorMessage);
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      setStatusMessage("Your station is pending approval");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Check status immediately when component mounts
     checkApprovalStatus();
-
-    // Set up polling to check status every 30 seconds
     const interval = setInterval(checkApprovalStatus, 30000);
-
-    // Clean up interval on component unmount
     return () => clearInterval(interval);
   }, []);
 
@@ -144,12 +157,14 @@ const GasStationWaiting = () => {
           <h2 className="text-2xl font-bold text-fuelBlue-500 mb-2">
             {!userData
               ? "Checking Status..."
-              : userData.station_approved
+              : stationData?.status === "VERIFIED"
               ? "Approved!"
+              : stationData?.status === "REJECTED"
+              ? "Rejected"
               : "Awaiting Approval"}
           </h2>
           <p className="text-gray-600">{statusMessage}</p>
-          {userData && userData.station_approved && (
+          {stationData?.status === "VERIFIED" && (
             <p className="text-green-500 mt-2">
               Your gas station has been approved! Redirecting to dashboard...
             </p>
@@ -185,32 +200,36 @@ const GasStationWaiting = () => {
               </p>
               <p
                 className={`font-medium ${
-                  userData.station_approved
+                  stationData?.status === "VERIFIED"
                     ? "text-green-600"
+                    : stationData?.status === "REJECTED"
+                    ? "text-red-600"
                     : "text-yellow-600"
                 }`}
               >
                 Status:{" "}
-                {userData.station_approved ? "Approved" : "Pending Approval"}
+                {stationData?.status === "VERIFIED"
+                  ? "Approved"
+                  : stationData?.status === "REJECTED"
+                  ? "Rejected"
+                  : "Pending Approval"}
               </p>
             </div>
           </div>
         )}
 
-        {userData && !userData.station_approved && (
-          <div className="bg-blue-50 p-4 rounded-md mb-6 text-left">
-            <h3 className="font-medium text-blue-700 mb-2">
-              What to expect next:
-            </h3>
-            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-              <li>An administrator will review your registration</li>
-              <li>Approval typically takes 1-2 business days</li>
-              <li>You'll receive an email notification when approved</li>
-              <li>This page will automatically update once approved</li>
-              <li>You'll then be able to access your gas station dashboard</li>
-            </ul>
-          </div>
-        )}
+        <div className="bg-blue-50 p-4 rounded-md mb-6 text-left">
+          <h3 className="font-medium text-blue-700 mb-2">
+            What to expect next:
+          </h3>
+          <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+            <li>An administrator will review your registration</li>
+            <li>Approval typically takes 1-2 business days</li>
+            <li>You'll receive an email notification when approved</li>
+            <li>This page will automatically update once approved</li>
+            <li>You'll then be able to access your gas station dashboard</li>
+          </ul>
+        </div>
 
         <div className="text-sm text-gray-500">
           Need help? Contact support at{" "}
