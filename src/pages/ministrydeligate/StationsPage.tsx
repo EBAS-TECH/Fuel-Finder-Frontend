@@ -229,6 +229,25 @@ const DelegateStationsPage = () => {
     setCurrentPage(page);
   };
 
+  // Calculate which two pages to show
+  const getVisiblePages = () => {
+    if (totalPages <= 2) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    if (currentPage === 1) {
+      return [1, 2];
+    }
+    
+    if (currentPage === totalPages) {
+      return [totalPages - 1, totalPages];
+    }
+    
+    return [currentPage - 1, currentPage];
+  };
+
+  const visiblePages = getVisiblePages();
+
   const exportToPDF = () => {
     if (filteredStations.length === 0) {
       toast({
@@ -571,7 +590,7 @@ const DelegateStationsPage = () => {
                   />
                 </PaginationItem>
 
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                {visiblePages.map(page => (
                   <PaginationItem key={page}>
                     <PaginationLink
                       onClick={() => handlePageChange(page)}

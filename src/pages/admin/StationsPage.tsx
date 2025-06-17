@@ -386,6 +386,25 @@ export default function StationsPage() {
     currentPage * itemsPerPage
   );
 
+  // Calculate the two page numbers to display
+  const getDisplayedPages = () => {
+    if (totalPages <= 2) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    if (currentPage === 1) {
+      return [1, 2];
+    }
+    
+    if (currentPage === totalPages) {
+      return [totalPages - 1, totalPages];
+    }
+    
+    return [currentPage - 1, currentPage];
+  };
+
+  const displayedPages = getDisplayedPages();
+
   return (
     <div className="p-4 md:p-6">
       <div className="mb-5">
@@ -729,30 +748,17 @@ export default function StationsPage() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
 
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className="text-xs md:text-sm"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
+              {displayedPages.map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="text-xs md:text-sm"
+                >
+                  {pageNum}
+                </Button>
+              ))}
 
               <Button
                 variant="outline"
