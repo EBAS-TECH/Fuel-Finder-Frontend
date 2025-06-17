@@ -72,6 +72,14 @@ export default function DeligatedashboardLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Determine active states
+  const isStationsActive = 
+    pathName === "/ministry-delegate" ||
+    pathName === "/ministry-delegate/stations" || 
+    pathName.startsWith("/ministry-delegate/stations/");
+  
+  const isProfileActive = pathName.startsWith("/ministry-delegate/profile");
+
   useEffect(() => {
     const initializeUser = async () => {
       try {
@@ -179,7 +187,6 @@ export default function DeligatedashboardLayout() {
       <header className="bg-white shadow-sm rounded-b-2xl z-20">
         <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Mobile menu button */}
             <button
               className="md:hidden text-gray-600 hover:text-green-600"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -259,7 +266,7 @@ export default function DeligatedashboardLayout() {
       </header>
 
       {/* Main Content Area */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Mobile Sidebar Overlay */}
         {mobileMenuOpen && (
           <div
@@ -271,7 +278,9 @@ export default function DeligatedashboardLayout() {
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed md:static w-64 bg-white shadow-sm rounded-r-2xl md:mt-2 md:ml-2 h-[calc(100vh-5rem)] md:h-[calc(100vh-5.5rem)] z-20 top-16 md:top-4 transition-transform duration-300 ease-in-out",
+            "fixed md:relative w-64 bg-white shadow-sm rounded-r-2xl h-[calc(100vh-5rem)] z-20",
+            "top-16 md:top-0 transition-transform duration-300",
+            "overflow-y-auto",
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
           )}
         >
@@ -281,16 +290,21 @@ export default function DeligatedashboardLayout() {
                 icon={<LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />}
                 label="Stations"
                 to="/ministry-delegate/stations"
-                active={pathName.startsWith("/ministry-delegate")}
-                onClick={() => setMobileMenuOpen(false)}
+                active={isStationsActive}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate("/ministry-delegate/stations");
+                }}
               />
-
               <SidebarItem
                 icon={<UserRound className="h-4 w-4 sm:h-5 sm:w-5" />}
                 label="Profile"
                 to="/ministry-delegate/profile"
-                active={pathName.startsWith("/ministry-delegate/profile")}
-                onClick={() => setMobileMenuOpen(false)}
+                active={isProfileActive}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate("/ministry-delegate/profile");
+                }}
               />
             </div>
           </div>
@@ -299,7 +313,8 @@ export default function DeligatedashboardLayout() {
         {/* Page Content */}
         <main
           className={cn(
-            "flex-1 p-4 sm:p-6 md:ml-4 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm transition-all duration-300",
+            "flex-1 p-4 sm:p-6 mt-4 bg-white rounded-tl-2xl rounded-bl-2xl shadow-sm",
+            "overflow-y-auto transition-all duration-300",
             mobileMenuOpen ? "ml-0" : "md:ml-4"
           )}
         >
